@@ -5,14 +5,8 @@ const getCognitoUrl = () => {
   return `https://cognito-idp.${region}.amazonaws.com/`;
 };
 
-export const DEMO_PROFILES = [
-  { id: 'alice', name: 'Alice (Student)', email: 'student-alice@campus.edu', role: 'student', avatar: '👩‍🎓' },
-  { id: 'bob', name: 'Bob (Student)', email: 'student-bob@campus.edu', role: 'student', avatar: '👨‍🎓' },
-  { id: 'admin', name: 'Campus Admin', email: 'admin@campus.edu', role: 'admin', avatar: '🛡️' }
-];
-
 export const cognitoService = {
-  async signUp(email, password, name) {
+  async signUp(email, password, name, accountType = 'visitor') {
     const clientId = localStorage.getItem('nexus_client_id') || DEFAULT_CONFIG.cognito.clientId;
     const body = {
       ClientId: clientId,
@@ -20,7 +14,8 @@ export const cognitoService = {
       Password: password,
       UserAttributes: [
         { Name: 'email', Value: email },
-        { Name: 'name', Value: name }
+        { Name: 'name', Value: name },
+        { Name: 'profile', Value: accountType === 'student' ? 'student-requested' : 'visitor' }
       ]
     };
 
@@ -60,7 +55,7 @@ export const cognitoService = {
     return data;
   },
 
-  async signIn(email, password) {
+  async signIn(email, password, accountType = null) {
     const clientId = localStorage.getItem('nexus_client_id') || DEFAULT_CONFIG.cognito.clientId;
     const body = {
       AuthFlow: 'USER_PASSWORD_AUTH',
@@ -86,30 +81,23 @@ export const cognitoService = {
     const idToken = data.AuthenticationResult?.IdToken;
     const accessToken = data.AuthenticationResult?.AccessToken;
 
-    // Decode payload to extract user groups / claims
-    let role = 'student';
-    let name = email.split('@')[0];
-    try {
-      const payloadBase64 = idToken.split('.')[1];
-      const payload = JSON.parse(atob(payloadBase64));
-      if (payload['cognito:groups']?.includes('admins')) {
-        role = 'admin';
-      }
-      if (payload.name) {
-        name = payload.name;
-      }
-    } catch (e) {
-      console.warn('Could not parse token claims:', e);
+    if (!idToken) throw new Error('This authentication challenge is not supported by this sign-in form.');
+    const encoded = idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const bytes = Uint8Array.from(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')), c => c.charCodeAt(0));
+    const payload = JSON.parse(new TextDecoder().decode(bytes));
+    const groups = Array.isArray(payload['cognito:groups']) ? payload['cognito:groups'] : [];
+    const isStudent = groups.includes('students');
+    const role = groups.includes('admins') ? 'admin' : isStudent ? 'student' : 'visitor';
+    if (accountType === 'student' && !isStudent && role !== 'admin') {
+      throw new Error('Student access has not been approved for this account. Choose Visitor to book events while approval is pending.');
     }
-
-    return { 
-      id: email, 
-      name, 
-      email, 
-      role, 
-      token: idToken, 
-      accessToken, 
-      avatar: role === 'admin' ? '🛡️' : '🎓' 
+    if (accountType === 'visitor' && role !== 'visitor') {
+      throw new Error('This is a campus account. Choose Student to sign in.');
+    }
+    return {
+      id: payload.sub, name: payload.name || email.split('@')[0], email: payload.email || email,
+      role, isStudent, studentRequested: payload.profile === 'student-requested' && !isStudent,
+      token: idToken, accessToken, avatar: role === 'admin' ? '🛡️' : isStudent ? '🎓' : '👤'
     };
   }
 };

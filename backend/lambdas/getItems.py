@@ -27,6 +27,17 @@ def response(status_code, body):
 
 def lambda_handler(event, context):
     try:
+        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
+        user_id = claims.get("sub") or claims.get("username")
+        if not user_id:
+            return response(401, {"error": "Sign in to view lost and found items"})
+
+        groups = claims.get("cognito:groups", [])
+        if isinstance(groups, str):
+            groups = [part.strip().strip('[]\" ') for part in groups.split(',')]
+        if "students" not in groups:
+            return response(403, {"error": "Lost & Found is available to verified students only"})
+
         query_params = event.get("queryStringParameters") or {}
         item_type = query_params.get("type")  # "lost" or "found"
 
@@ -34,12 +45,6 @@ def lambda_handler(event, context):
 
         # If /items/me is requested, filter by user
         if "/me" in path:
-            claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
-            user_id = claims.get("sub") or claims.get("username")
-            if not user_id:
-                headers = event.get("headers") or {}
-                user_id = headers.get("x-mock-user", "student-reporter")
-
             # Scan with filter on reportedBy
             res = items_table.scan(
                 FilterExpression=boto3.dynamodb.conditions.Attr("reportedBy").eq(user_id)

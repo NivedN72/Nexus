@@ -38,12 +38,14 @@ def lambda_handler(event, context):
         user_id = claims.get("sub") or claims.get("username")
         user_email = claims.get("email")
 
-        # Fallback for manual testing
-        headers = event.get("headers") or {}
-        if not user_id:
-            user_id = headers.get("x-mock-user", "student-reporter")
-        if not user_email:
-            user_email = headers.get("x-mock-email", "student@campus.edu")
+        if not user_id or not user_email:
+            return response(401, {"error": "Sign in to report an item"})
+
+        groups = claims.get("cognito:groups", [])
+        if isinstance(groups, str):
+            groups = [part.strip().strip('[]\" ') for part in groups.split(',')]
+        if "students" not in groups:
+            return response(403, {"error": "Lost & Found is available to verified students only"})
 
         # 2. Parse request body
         body = json.loads(event.get("body") or "{}")

@@ -8,6 +8,11 @@ const getBaseUrl = () => {
   return DEFAULT_CONFIG.apiBaseUrl;
 };
 
+const authHeaders = (user) => {
+  if (!user?.token) throw new Error('Please sign in to continue.');
+  return { Authorization: user.token };
+};
+
 export const api = {
   // 1. Events
   async getEvents() {
@@ -23,17 +28,9 @@ export const api = {
   },
 
   async createEvent(eventData, currentUser) {
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    if (currentUser?.token) {
-      headers['Authorization'] = currentUser.token;
-    }
-
-    const payload = {
-      ...eventData,
-      isAdmin: currentUser?.role === 'admin' || !currentUser?.token,
-    };
+    if (currentUser?.role !== 'admin') throw new Error('Only campus admins can create events.');
+    const headers = { ...authHeaders(currentUser), 'Content-Type': 'application/json' };
+    const payload = eventData;
 
     const res = await fetch(`${getBaseUrl()}/events`, {
       method: 'POST',
@@ -46,33 +43,11 @@ export const api = {
     return data;
   },
 
-  async requestBookingCode({ eventId, email, name }) {
+  async bookEvent(eventId, currentUser) {
     const res = await fetch(`${getBaseUrl()}/bookings`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'request_code',
-        eventId,
-        email,
-        name,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to request code');
-    return data;
-  },
-
-  async verifyAndBookSeat({ eventId, email, name, authCode }) {
-    const res = await fetch(`${getBaseUrl()}/bookings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'verify_and_book',
-        eventId,
-        email,
-        name,
-        authCode,
-      }),
+      headers: { ...authHeaders(currentUser), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Booking failed');
@@ -80,38 +55,24 @@ export const api = {
   },
 
   async getMyBookings(currentUser) {
-    const headers = {};
-    if (currentUser?.token) {
-      headers['Authorization'] = currentUser.token;
-    }
-
-    const userParam = encodeURIComponent(currentUser?.email || 'student-alice@campus.edu');
-    const res = await fetch(`${getBaseUrl()}/bookings/me?userId=${userParam}`, { headers });
+    const res = await fetch(`${getBaseUrl()}/bookings/me`, { headers: authHeaders(currentUser) });
     if (!res.ok) throw new Error('Failed to fetch user bookings');
     return res.json();
   },
 
   // 2. Lost & Found Items
-  async getItems(type = null) {
+  async getItems(currentUser, type = null) {
+    if (!currentUser?.isStudent) throw new Error('Lost & Found is available to verified students only.');
     const url = type ? `${getBaseUrl()}/items?type=${type}` : `${getBaseUrl()}/items`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: authHeaders(currentUser) });
     if (!res.ok) throw new Error('Failed to fetch items');
     return res.json();
   },
 
   async reportItem(itemData, currentUser) {
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    if (currentUser?.token) {
-      headers['Authorization'] = currentUser.token;
-    }
-
-    const payload = {
-      ...itemData,
-      reportedBy: currentUser?.email || 'student-reporter@campus.edu',
-      userEmail: currentUser?.email || 'student-reporter@campus.edu',
-    };
+    if (!currentUser?.isStudent) throw new Error('Lost & Found is available to verified students only.');
+    const headers = { ...authHeaders(currentUser), 'Content-Type': 'application/json' };
+    const payload = itemData;
 
     const res = await fetch(`${getBaseUrl()}/items`, {
       method: 'POST',

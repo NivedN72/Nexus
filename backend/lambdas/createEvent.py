@@ -35,12 +35,7 @@ def lambda_handler(event, context):
         if isinstance(groups, list):
             is_admin = "admins" in groups
         elif isinstance(groups, str):
-            is_admin = "admins" in groups.split(",")
-
-        # For testing without Cognito authorizer connected, allow local override if header present
-        headers = event.get("headers") or {}
-        if not is_admin and headers.get("x-mock-role") == "admin":
-            is_admin = True
+            is_admin = "admins" in [part.strip().strip('[]\" ') for part in groups.split(",")]
 
         if not is_admin:
             return response(403, {"error": "Forbidden: Only campus admins can create events"})

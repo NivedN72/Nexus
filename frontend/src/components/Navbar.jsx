@@ -1,6 +1,5 @@
 import React from 'react';
-import { Calendar, Search, Ticket, Shield, Settings, Sparkles, UserCheck, LogIn, LogOut } from 'lucide-react';
-import { DEMO_PROFILES } from '../services/cognito';
+import { Calendar, Search, Ticket, Settings, Sparkles, LogIn, LogOut } from 'lucide-react';
 
 export default function Navbar({ 
   activeTab, 
@@ -85,9 +84,10 @@ export default function Navbar({
               <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 {currentUser.name}
+                <span className="text-[10px] text-slate-400 capitalize">{currentUser.role}</span>
               </span>
               <button
-                onClick={() => setCurrentUser(DEMO_PROFILES[0])}
+                onClick={() => setCurrentUser(null)}
                 title="Sign Out"
                 className="text-slate-400 hover:text-rose-400 ml-1 transition-colors"
               >
@@ -95,43 +95,13 @@ export default function Navbar({
               </button>
             </div>
           ) : (
-            /* Demo Profile Switcher + Direct Sign In Button */
-            <div className="flex items-center gap-2">
-              <div className="flex items-center bg-slate-900/80 rounded-xl border border-white/10 px-2 py-1 text-xs">
-                <span className="text-slate-400 mr-1.5 hidden sm:inline-flex items-center gap-1">
-                  <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
-                  Demo:
-                </span>
-                <select
-                  value={currentUser.id}
-                  onChange={(e) => {
-                    const found = DEMO_PROFILES.find((p) => p.id === e.target.value);
-                    if (found) setCurrentUser(found);
-                  }}
-                  className="bg-transparent text-white font-medium focus:outline-none cursor-pointer pr-1 text-xs"
-                >
-                  {DEMO_PROFILES.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-slate-900 text-white">
-                      {p.avatar} {p.name}
-                    </option>
-                  ))}
-                </select>
-                {currentUser.role === 'admin' && (
-                  <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    ADMIN
-                  </span>
-                )}
-              </div>
-
-              {/* Direct Cognito Sign In Button */}
-              <button
-                onClick={onOpenAuth}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-semibold transition-all"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                Sign In
-              </button>
-            </div>
+            <button
+              onClick={onOpenAuth}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-semibold transition-all"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              Sign In
+            </button>
           )}
 
           {/* Settings Button */}

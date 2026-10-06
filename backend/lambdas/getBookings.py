@@ -27,18 +27,32 @@ def response(status_code, body):
 def lambda_handler(event, context):
     try:
         claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
-        user_id = claims.get("sub") or claims.get("email")
-
+        user_id = claims.get("sub")
+        email = (claims.get("email") or "").strip().lower()
+        verified_email = str(claims.get("email_verified", "false")).lower() == "true"
         if not user_id:
-            headers = event.get("headers") or {}
-            user_id = headers.get("x-mock-user", "student-user-01")
+            return response(401, {"error": "Sign in to view your bookings"})
 
-        res = bookings_table.query(
-            IndexName="userId-index",
-            KeyConditionExpression=Key("userId").eq(user_id)
-        )
-
-        items = res.get("Items", [])
+        # Include legacy Cognito-sub tickets and public bookings for a verified email.
+        user_ids = [user_id]
+        if email and verified_email and email != user_id:
+            user_ids.append(email)
+        tickets = {}
+        for identity in user_ids:
+            params = {
+                "IndexName": "userId-index",
+                "KeyConditionExpression": Key("userId").eq(identity)
+            }
+            while True:
+                res = bookings_table.query(**params)
+                for item in res.get("Items", []):
+                    if item.get("status") == "CONFIRMED":
+                        tickets[item["bookingId"]] = item
+                cursor = res.get("LastEvaluatedKey")
+                if not cursor:
+                    break
+                params["ExclusiveStartKey"] = cursor
+        items = sorted(tickets.values(), key=lambda item: item.get("bookingTime", ""), reverse=True)
         return response(200, {"bookings": items, "count": len(items)})
 
     except Exception as e:

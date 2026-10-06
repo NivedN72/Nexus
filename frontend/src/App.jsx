@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import EventCard from './components/EventCard';
 import ItemCard from './components/ItemCard';
@@ -9,7 +9,6 @@ import AuthModal from './components/AuthModal';
 import BookEventModal from './components/BookEventModal';
 import AwsArchitectureBadge from './components/AwsArchitectureBadge';
 import { api } from './services/api';
-import { DEMO_PROFILES } from './services/cognito';
 import { 
   Sparkles, Calendar, PlusCircle, Search, RefreshCw, Ticket, 
   AlertCircle, CheckCircle2, Shield, Info, ArrowRight, LogIn 
@@ -17,7 +16,7 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('events');
-  const [currentUser, setCurrentUser] = useState(DEMO_PROFILES[0]); // Alice default
+  const [currentUser, setCurrentUser] = useState(null);
   
   // Data State
   const [events, setEvents] = useState([]);
@@ -27,7 +26,7 @@ export default function App() {
   
   // Loading & Error states
   const [loading, setLoading] = useState(true);
-  const [bookingLoadingId, setBookingLoadingId] = useState(null);
+  const bookingLoadingId = null;
   const [toast, setToast] = useState(null);
 
   // Modals
@@ -41,51 +40,75 @@ export default function App() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [eventsData, itemsData] = await Promise.allSettled([
-        api.getEvents(),
-        api.getItems(),
-      ]);
+  const dataRequest = useRef(0);
+  const bookingRequest = useRef(0);
+  const isSignedIn = Boolean(currentUser?.token);
+  const isStudent = isSignedIn && currentUser.isStudent;
+  const isAdmin = isSignedIn && currentUser.role === 'admin';
 
-      if (eventsData.status === 'fulfilled') {
-        setEvents(eventsData.value.events || []);
-      }
-      if (itemsData.status === 'fulfilled') {
-        setItems(itemsData.value.items || []);
-      }
-    } catch (err) {
-      console.error(err);
-      showToast('Could not load data. Check AWS API Gateway URL in settings.', 'error');
+  const changeUser = (user) => {
+    dataRequest.current += 1;
+    bookingRequest.current += 1;
+    setItems([]);
+    setBookings([]);
+    setIsReportOpen(false);
+    setIsCreateEventOpen(false);
+    setCurrentUser(user);
+    if (!user) { setActiveTab('events'); setSelectedEventForBooking(null); }
+    else if (selectedEventForBooking) setActiveTab('events');
+  };
+
+  const openReport = () => {
+    if (isStudent) setIsReportOpen(true);
+    else if (isSignedIn) { setActiveTab('lostfound'); showToast('Lost & Found requires approved student access.', 'error'); }
+    else setIsAuthOpen(true);
+  };
+
+  const loadData = async () => {
+    const request = ++dataRequest.current;
+    setLoading(true);
+    try {
+      const results = await Promise.allSettled([
+        api.getEvents(),
+        ...(isStudent ? [api.getItems(currentUser)] : []),
+      ]);
+      if (request !== dataRequest.current) return;
+      if (results[0].status === 'fulfilled') setEvents(results[0].value.events || []);
+      else showToast('Could not load campus events.', 'error');
+      if (results[1]?.status === 'fulfilled') setItems(results[1].value.items || []);
+      else if (results[1]?.status === 'rejected') showToast('Could not load lost and found items.', 'error');
     } finally {
-      setLoading(false);
+      if (request === dataRequest.current) setLoading(false);
     }
   };
 
   const loadBookings = async () => {
+    if (!isSignedIn) return;
+    const request = ++bookingRequest.current;
+    setBookings([]);
     try {
       const data = await api.getMyBookings(currentUser);
-      setBookings(data.bookings || []);
+      if (request === bookingRequest.current) setBookings(data.bookings || []);
     } catch (err) {
-      console.error(err);
+      if (request === bookingRequest.current) showToast(err.message, 'error');
     }
   };
 
   useEffect(() => {
     loadData();
-  }, []);
+    return () => { dataRequest.current += 1; };
+  }, [currentUser]);
 
   useEffect(() => {
-    if (activeTab === 'bookings') {
-      loadBookings();
-    }
+    if (activeTab === 'bookings' && isSignedIn) loadBookings();
+    return () => { bookingRequest.current += 1; };
   }, [activeTab, currentUser]);
 
   const [selectedEventForBooking, setSelectedEventForBooking] = useState(null);
 
   const handleBookEvent = (event) => {
     setSelectedEventForBooking(event);
+    if (!isSignedIn) setIsAuthOpen(true);
   };
 
   const filteredItems = items.filter((item) => {
@@ -103,7 +126,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         currentUser={currentUser}
-        setCurrentUser={setCurrentUser}
+        setCurrentUser={changeUser}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
       />
@@ -153,14 +176,14 @@ export default function App() {
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-3">
               <button
-                onClick={() => setIsReportOpen(true)}
+                onClick={openReport}
                 className="px-4 py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-600/25 flex items-center gap-2 transition-all active:scale-[0.98]"
               >
                 <Search className="w-4 h-4" />
                 Report Lost / Found
               </button>
 
-              {currentUser.role === 'admin' && (
+              {isAdmin && (
                 <button
                   onClick={() => setIsCreateEventOpen(true)}
                   className="px-4 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 flex items-center gap-2 transition-all active:scale-[0.98]"
@@ -190,10 +213,10 @@ export default function App() {
                   <Calendar className="w-6 h-6 text-indigo-400" />
                   Upcoming Events
                 </h2>
-                <p className="text-xs text-slate-400">Publicly visible • Live seat counter with DynamoDB race-condition protection</p>
+                <p className="text-xs text-slate-400">Publicly visible &bull; Live seat counter with DynamoDB race-condition protection</p>
               </div>
 
-              {currentUser.role === 'admin' && (
+              {isAdmin && (
                 <button
                   onClick={() => setIsCreateEventOpen(true)}
                   className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-all"
@@ -214,13 +237,12 @@ export default function App() {
               <div className="glass-card rounded-2xl p-12 text-center text-slate-400 border border-white/5">
                 <Calendar className="w-12 h-12 mx-auto mb-3 text-slate-600" />
                 <h3 className="text-lg font-bold text-white mb-1">No campus events found</h3>
-                <p className="text-xs max-w-sm mx-auto mb-4">Click below to publish the first event to DynamoDB.</p>
-                <button
-                  onClick={() => setIsCreateEventOpen(true)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white"
-                >
-                  Create Event
-                </button>
+                <p className="text-xs max-w-sm mx-auto mb-4">Check back soon for upcoming campus events.</p>
+                {isAdmin && (
+                  <button onClick={() => setIsCreateEventOpen(true)} className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white">
+                    Create Event
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -237,8 +259,25 @@ export default function App() {
           </section>
         )}
 
+        {!isSignedIn && activeTab !== 'events' && (
+          <section className="glass-card rounded-2xl p-12 text-center border border-white/5">
+            <LogIn className="w-10 h-10 mx-auto mb-3 text-indigo-400" />
+            <h2 className="text-xl font-bold mb-2">Sign in to {activeTab === 'lostfound' ? 'Lost & Found' : 'My Bookings'}</h2>
+            <p className="text-sm text-slate-400 mb-4">Sign in with your visitor or student account to view your tickets. Lost & Found requires approved student access.</p>
+            <button onClick={() => setIsAuthOpen(true)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold">Sign In</button>
+          </section>
+        )}
+
+        {activeTab === 'lostfound' && isSignedIn && !isStudent && (
+          <section className="glass-card rounded-2xl p-12 text-center border border-white/5">
+            <Shield className="w-10 h-10 mx-auto mb-3 text-indigo-400" />
+            <h2 className="text-xl font-bold mb-2">Lost & Found is for verified students</h2>
+            <p className="text-sm text-slate-400">Ask a campus admin to verify your student status. You can still book events and view your tickets.</p>
+          </section>
+        )}
+
         {/* TAB 2: LOST & FOUND */}
-        {activeTab === 'lostfound' && (
+        {activeTab === 'lostfound' && isStudent && (
           <section>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
@@ -279,7 +318,7 @@ export default function App() {
                 <h3 className="text-lg font-bold text-white mb-1">No items found</h3>
                 <p className="text-xs max-w-sm mx-auto mb-4">Be the first to report a lost or found item with a photo.</p>
                 <button
-                  onClick={() => setIsReportOpen(true)}
+                  onClick={openReport}
                   className="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 text-white"
                 >
                   Report Item
@@ -296,7 +335,7 @@ export default function App() {
         )}
 
         {/* TAB 3: MY BOOKINGS */}
-        {activeTab === 'bookings' && (
+        {activeTab === 'bookings' && isSignedIn && (
           <section className="max-w-4xl mx-auto">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -358,15 +397,16 @@ export default function App() {
       {/* Modals */}
       <AuthModal
         isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
+        onClose={() => { setIsAuthOpen(false); if (!isSignedIn) setSelectedEventForBooking(null); }}
         onAuthSuccess={(user) => {
-          setCurrentUser(user);
+          changeUser(user);
+          setIsAuthOpen(false);
           showToast(`Welcome back, ${user.name}! Authenticated with Cognito.`, 'success');
         }}
       />
 
       <ReportItemModal
-        isOpen={isReportOpen}
+        isOpen={isReportOpen && isStudent}
         onClose={() => setIsReportOpen(false)}
         currentUser={currentUser}
         onItemReported={() => {
@@ -376,7 +416,7 @@ export default function App() {
       />
 
       <CreateEventModal
-        isOpen={isCreateEventOpen}
+        isOpen={isCreateEventOpen && isAdmin}
         onClose={() => setIsCreateEventOpen(false)}
         currentUser={currentUser}
         onEventCreated={() => {
@@ -385,17 +425,20 @@ export default function App() {
         }}
       />
 
-      <BookEventModal
-        isOpen={!!selectedEventForBooking}
-        onClose={() => setSelectedEventForBooking(null)}
-        event={selectedEventForBooking}
-        currentUser={currentUser}
-        onBookingSuccess={(res) => {
-          loadData();
-          if (activeTab === 'bookings') loadBookings();
-          showToast(`🎉 Reservation confirmed! Remaining seats: ${res.remainingSeats}`, 'success');
-        }}
-      />
+      {isSignedIn && selectedEventForBooking && (
+        <BookEventModal
+          key={`${currentUser.id}:${selectedEventForBooking.eventId}`}
+          isOpen={true}
+          onClose={() => setSelectedEventForBooking(null)}
+          event={selectedEventForBooking}
+          currentUser={currentUser}
+          onBookingSuccess={(res) => {
+            loadData();
+            if (activeTab === 'bookings') loadBookings();
+            showToast(`Reservation confirmed! Remaining seats: ${res.remainingSeats}`, 'success');
+          }}
+        />
+      )}
 
       <SettingsModal
         isOpen={isSettingsOpen}

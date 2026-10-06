@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Lock, Mail, User, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { cognitoService } from '../services/cognito';
 
@@ -7,10 +7,18 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [accountType, setAccountType] = useState('visitor');
+  const [signInType, setSignInType] = useState('visitor');
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setMode('signin'); setError(''); setSuccessMsg(''); setPassword(''); setCode('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -19,12 +27,9 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     try {
       setLoading(true);
       setError('');
-      const user = await cognitoService.signIn(email.trim(), password);
-      setSuccessMsg('Signed in successfully!');
-      setTimeout(() => {
-        onAuthSuccess(user);
-        onClose();
-      }, 500);
+      const user = await cognitoService.signIn(email.trim(), password, signInType);
+      setPassword('');
+      onAuthSuccess(user);
     } catch (err) {
       console.error(err);
       if (err.message?.includes('UserNotConfirmedException')) {
@@ -43,7 +48,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     try {
       setLoading(true);
       setError('');
-      await cognitoService.signUp(email.trim(), password, name.trim());
+      await cognitoService.signUp(email.trim(), password, name.trim(), accountType);
       setSuccessMsg('Account created! Please check your email for the verification code.');
       setMode('confirm');
     } catch (err) {
@@ -90,10 +95,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           <div>
             <h2 className="text-xl font-bold text-white">
               {mode === 'signin' && 'Sign In with Cognito'}
-              {mode === 'signup' && 'Create Student Account'}
+              {mode === 'signup' && 'Create Account'}
               {mode === 'confirm' && 'Verify Your Email'}
             </h2>
-            <p className="text-xs text-slate-400">Direct authentication against Amazon Cognito User Pool</p>
+            <p className="text-xs text-slate-400">One account for event booking and your tickets</p>
           </div>
         </div>
 
@@ -114,13 +119,25 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         {/* SIGN IN FORM */}
         {mode === 'signin' && (
           <form onSubmit={handleSignIn} className="space-y-4">
+            <fieldset disabled={loading}>
+              <legend className="text-xs font-semibold text-slate-400 mb-2">Sign in as</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {['visitor', 'student'].map(type => (
+                  <label key={type} className={`flex items-center justify-center gap-2 cursor-pointer px-4 py-3 rounded-xl border text-sm font-semibold ${signInType === type ? 'bg-indigo-600/25 border-indigo-500 text-indigo-200' : 'bg-slate-900/60 border-white/10 text-slate-400'}`}>
+                    <input type="radio" name="sign-in-type" value={type} checked={signInType === type} onChange={() => { setSignInType(type); setError(''); }} className="accent-indigo-500" />
+                    {type === 'visitor' ? 'Visitor' : 'Student'}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-slate-400 mt-2">{signInType === 'visitor' ? 'Book campus events and view your tickets.' : 'For approved students and campus admins. Student access is required for Lost & Found.'}</p>
+            </fieldset>
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
                 <Mail className="w-3.5 h-3.5 text-indigo-400" /> Email Address
               </label>
               <input
                 type="email"
-                placeholder="student@campus.edu"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
@@ -158,7 +175,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               Don't have an account?{' '}
               <button
                 type="button"
-                onClick={() => { setMode('signup'); setError(''); setSuccessMsg(''); }}
+                onClick={() => { setAccountType(signInType); setMode('signup'); setError(''); setSuccessMsg(''); }}
                 className="text-indigo-400 font-semibold hover:underline"
               >
                 Sign Up
@@ -170,6 +187,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         {/* SIGN UP FORM */}
         {mode === 'signup' && (
           <form onSubmit={handleSignUp} className="space-y-4">
+            <div>
+              <label htmlFor="account-type" className="block text-xs font-semibold text-slate-400 mb-1">Account Type</label>
+              <select id="account-type" value={accountType} onChange={e => setAccountType(e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white">
+                <option value="visitor">Visitor</option>
+                <option value="student">Student — request campus access</option>
+              </select>
+              <p className="text-xs text-slate-400 mt-2">Everyone can book events. Student access to Lost & Found requires campus admin approval; you can book while approval is pending.</p>
+            </div>
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-indigo-400" /> Full Name
@@ -186,11 +211,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-indigo-400" /> Campus Email
+                <Mail className="w-3.5 h-3.5 text-indigo-400" /> Email Address
               </label>
               <input
                 type="email"
-                placeholder="student@campus.edu"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
