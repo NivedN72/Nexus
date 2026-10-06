@@ -3,15 +3,24 @@ import { X, Save, Settings, Cloud, Key, Check } from 'lucide-react';
 import { DEFAULT_CONFIG, setConfig } from '../config';
 
 export default function SettingsModal({ isOpen, onClose }) {
-  const [apiUrl, setApiUrl] = useState(
-    localStorage.getItem('nexus_api_url') || DEFAULT_CONFIG.apiBaseUrl
-  );
-  const [poolId, setPoolId] = useState(
-    localStorage.getItem('nexus_pool_id') || DEFAULT_CONFIG.cognito.userPoolId
-  );
-  const [clientId, setClientId] = useState(
-    localStorage.getItem('nexus_client_id') || DEFAULT_CONFIG.cognito.clientId
-  );
+  const getStoredUrl = () => {
+    const u = localStorage.getItem('nexus_api_url');
+    return (u && !u.includes('k65kqaeq')) ? u : DEFAULT_CONFIG.apiBaseUrl;
+  };
+
+  const getStoredPoolId = () => {
+    const p = localStorage.getItem('nexus_pool_id');
+    return (p && !p.includes('xxxx')) ? p : DEFAULT_CONFIG.cognito.userPoolId;
+  };
+
+  const getStoredClientId = () => {
+    const c = localStorage.getItem('nexus_client_id');
+    return (c && !c.includes('xxxx')) ? c : DEFAULT_CONFIG.cognito.clientId;
+  };
+
+  const [apiUrl, setApiUrl] = useState(getStoredUrl());
+  const [poolId, setPoolId] = useState(getStoredPoolId());
+  const [clientId, setClientId] = useState(getStoredClientId());
   const [saved, setSaved] = useState(false);
 
   if (!isOpen) return null;
@@ -80,6 +89,7 @@ export default function SettingsModal({ isOpen, onClose }) {
               value={poolId}
               onChange={(e) => setPoolId(e.target.value)}
               className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2 font-mono text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              required
             />
           </div>
 
@@ -94,6 +104,7 @@ export default function SettingsModal({ isOpen, onClose }) {
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2 font-mono text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              required
             />
           </div>
 
