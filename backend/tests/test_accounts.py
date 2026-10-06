@@ -68,7 +68,8 @@ def load(name, aws):
     conditions = types.ModuleType('boto3.dynamodb.conditions'); conditions.Key = Key
     dtypes = types.ModuleType('boto3.dynamodb.types'); dtypes.TypeSerializer = Serializer
     errors = types.ModuleType('botocore.exceptions'); errors.ClientError = ClientError
-    for module in (boto, conditions, dtypes, errors): sys.modules[module.__name__] = module
+    config = types.ModuleType('botocore.config'); config.Config = lambda **kwargs: kwargs
+    for module in (boto, conditions, dtypes, errors, config): sys.modules[module.__name__] = module
     sys.modules['boto3.dynamodb'] = types.ModuleType('boto3.dynamodb')
     sys.modules['botocore'] = types.ModuleType('botocore')
     spec = importlib.util.spec_from_file_location(name, ROOT / (name + '.py'))
@@ -158,6 +159,58 @@ class AccountTests(unittest.TestCase):
     def test_admin_mock_override_removed(self):
         request=event(groups=['visitors']);request['headers']={'x-mock-role':'admin'}
         self.assertEqual(load('createEvent',self.aws).lambda_handler(request,None)['statusCode'],403)
+    def test_private_photos_are_signed_without_changing_records(self):
+        signed = []
+        def presign(operation, Params, ExpiresIn):
+            signed.append((operation, Params, ExpiresIn))
+            return 'https://private.example/photo?signature=test'
+        self.aws.generate_presigned_url = presign
+        handler = load('getItems', self.aws)
+        records = [{'imageUrl': 'uploads/blue cap.jpg', 'title': 'Cap'}, {'title': 'No photo'}]
+        handler.items_table = types.SimpleNamespace(scan=lambda **kwargs: {'Items': records})
+        result = handler.lambda_handler(event(groups=['students']), None)
+        self.assertEqual(result['statusCode'], 200)
+        body = json.loads(result['body'])
+        self.assertEqual(body['items'][0]['imageUrl'], 'https://private.example/photo?signature=test')
+        self.assertNotIn('imageUrl', body['items'][1])
+        self.assertEqual(records[0]['imageUrl'], 'uploads/blue cap.jpg')
+        self.assertEqual(signed, [('get_object', {'Bucket': handler.BUCKET_NAME, 'Key': 'uploads/blue cap.jpg'}, 600)])
+        self.assertEqual(self.aws.calls, 0)
+
+    def test_photo_urls_only_signed_for_authorized_students_on_all_routes(self):
+        signed = []
+        self.aws.generate_presigned_url = lambda *a, **k: signed.append(k) or 'https://private.example/signed'
+        handler = load('getItems', self.aws)
+        rows = [{'imageUrl': 'uploads/photo.jpg'}]
+        handler.items_table = types.SimpleNamespace(scan=lambda **kwargs: {'Items': rows}, query=lambda **kwargs: {'Items': rows})
+        for groups in ([], ['visitors'], ['admins']):
+            self.assertEqual(handler.lambda_handler(event(groups=groups), None)['statusCode'], 403)
+        self.assertEqual(signed, [])
+        class Expression:
+            def eq(self, value): return self
+            def __and__(self, other): return self
+        handler.Key = lambda name: Expression()
+        sys.modules['boto3'].dynamodb = types.SimpleNamespace(conditions=types.SimpleNamespace(Attr=lambda name: Expression()))
+        for path, params in (('/items', {}), ('/items', {'type': 'lost'}), ('/items/me', {})):
+            request = event(groups=['students']); request.update(path=path, queryStringParameters=params)
+            result = handler.lambda_handler(request, None)
+            self.assertEqual(result['statusCode'], 200)
+            self.assertEqual(json.loads(result['body'])['items'][0]['imageUrl'], 'https://private.example/signed')
+        self.assertEqual(len(signed), 3)
+
+    def test_legacy_bucket_urls_are_resigned_and_other_urls_are_unchanged(self):
+        keys = []
+        self.aws.generate_presigned_url = lambda *a, **k: keys.append(k['Params']['Key']) or 'https://private.example/signed'
+        handler = load('getItems', self.aws)
+        original = [
+            {'imageUrl': f'https://{handler.BUCKET_NAME}.s3.{handler.REGION}.amazonaws.com/uploads/blue%20cap.jpg'},
+            {'imageUrl': 'https://other.example/photo.jpg'},
+            {'imageUrl': 'outside/photo.jpg'},
+        ]
+        response = json.loads(handler.items_response(original)['body'])
+        self.assertEqual(keys, ['uploads/blue cap.jpg'])
+        self.assertEqual(response['items'][1:], original[1:])
+
     def test_student_request_never_auto_grants_students(self):
         handler=load('postConfirmation',self.aws)
         request={'triggerSource':'PostConfirmation_ConfirmSignUp','userPoolId':'pool','userName':'person','request':{'userAttributes':{'profile':'student-requested'}}}

@@ -1,4 +1,7 @@
 import json
+import os
+from urllib.parse import urlparse, unquote
+from botocore.config import Config
 import boto3
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
@@ -6,6 +9,25 @@ from decimal import Decimal
 REGION = "ap-southeast-2"
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 items_table = dynamodb.Table("Nexus-Items")
+BUCKET_NAME = os.environ.get("S3_BUCKET_NAME", "nexus-item-photos-nived2026")
+s3_client = boto3.client("s3", region_name=REGION, config=Config(signature_version="s3v4"))
+
+def items_response(items):
+    # Sign response copies only: DynamoDB keeps the permanent object keys.
+    result = []
+    for item in items:
+        photo = dict(item)
+        key = photo.get("imageUrl")
+        if isinstance(key, str) and key.startswith("https://"):
+            parsed = urlparse(key)
+            if parsed.hostname in (f"{BUCKET_NAME}.s3.{REGION}.amazonaws.com", f"{BUCKET_NAME}.s3.amazonaws.com"):
+                key = unquote(parsed.path.lstrip("/"))
+        if isinstance(key, str) and key.startswith("uploads/"):
+            photo["imageUrl"] = s3_client.generate_presigned_url(
+                "get_object", Params={"Bucket": BUCKET_NAME, "Key": key}, ExpiresIn=600
+            )
+        result.append(photo)
+    return response(200, {"items": result, "count": len(result)})
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -49,7 +71,7 @@ def lambda_handler(event, context):
             res = items_table.scan(
                 FilterExpression=boto3.dynamodb.conditions.Attr("reportedBy").eq(user_id)
             )
-            return response(200, {"items": res.get("Items", []), "count": len(res.get("Items", []))})
+            return items_response(res.get("Items", []))
 
         # If type query param given: query GSI type-status-index
         if item_type in ["lost", "found"]:
@@ -58,12 +80,12 @@ def lambda_handler(event, context):
                 KeyConditionExpression=Key("type").eq(item_type) & Key("status").eq("open")
             )
             items = res.get("Items", [])
-            return response(200, {"items": items, "count": len(items)})
+            return items_response(items)
 
         # Default: list all open items
         res = items_table.scan()
         items = res.get("Items", [])
-        return response(200, {"items": items, "count": len(items)})
+        return items_response(items)
 
     except Exception as e:
         print(f"Error fetching items: {str(e)}")

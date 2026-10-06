@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tag, MapPin, Sparkles, CheckCircle2, Clock, Image as ImageIcon } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../config';
 
 export default function ItemCard({ item }) {
+  const [failedImageUrl, setFailedImageUrl] = useState(null);
   const isLost = item.type === 'lost';
   const isMatched = item.status === 'matched';
   const tags = Array.isArray(item.tags)
@@ -16,6 +17,7 @@ export default function ItemCard({ item }) {
   };
 
   const imageUrl = getImageUrl(item.imageUrl);
+  const canShowImage = imageUrl && failedImageUrl !== imageUrl;
 
   return (
     <div
@@ -28,26 +30,23 @@ export default function ItemCard({ item }) {
       <div>
         {/* Photo Header */}
         <div className="relative w-full h-44 bg-slate-900 overflow-hidden flex items-center justify-center">
-          {imageUrl ? (
+          {canShowImage ? (
             <img
               src={imageUrl}
               alt={item.title}
               className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
+              onError={() => setFailedImageUrl(imageUrl)}
             />
           ) : null}
 
           {/* Placeholder if image not loaded */}
           <div
             className={`w-full h-full flex flex-col items-center justify-center text-slate-500 ${
-              imageUrl ? 'hidden' : 'flex'
+              canShowImage ? 'hidden' : 'flex'
             }`}
           >
             <ImageIcon className="w-8 h-8 mb-1 text-slate-600" />
-            <span className="text-xs">Photo in S3 bucket</span>
+            <span className="text-xs">{imageUrl ? 'Photo unavailable. Refresh to retry.' : 'No photo uploaded'}</span>
           </div>
 
           {/* Top Badges */}
