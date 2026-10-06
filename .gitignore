@@ -31,3 +31,8 @@ Thumbs.db
 # Python
 __pycache__/
 *.py[cod]
+
+# Local assistant plans and deployment notes
+/AWS_ACCOUNT_ACCESS_PLAN.md
+/AWS_DEPLOYMENT_REPORT.md
+/.codex-notes/
