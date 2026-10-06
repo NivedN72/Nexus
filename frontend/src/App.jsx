@@ -6,6 +6,7 @@ import ReportItemModal from './components/ReportItemModal';
 import CreateEventModal from './components/CreateEventModal';
 import SettingsModal from './components/SettingsModal';
 import AuthModal from './components/AuthModal';
+import BookEventModal from './components/BookEventModal';
 import AwsArchitectureBadge from './components/AwsArchitectureBadge';
 import { api } from './services/api';
 import { DEMO_PROFILES } from './services/cognito';
@@ -81,18 +82,10 @@ export default function App() {
     }
   }, [activeTab, currentUser]);
 
-  const handleBookEvent = async (eventId) => {
-    try {
-      setBookingLoadingId(eventId);
-      const result = await api.bookEvent(eventId, currentUser);
-      showToast(`🎉 Success! Seat booked. Remaining: ${result.remainingSeats}`, 'success');
-      loadData();
-      if (activeTab === 'bookings') loadBookings();
-    } catch (err) {
-      showToast(err.message, 'error');
-    } finally {
-      setBookingLoadingId(null);
-    }
+  const [selectedEventForBooking, setSelectedEventForBooking] = useState(null);
+
+  const handleBookEvent = (event) => {
+    setSelectedEventForBooking(event);
   };
 
   const filteredItems = items.filter((item) => {
@@ -389,6 +382,18 @@ export default function App() {
         onEventCreated={() => {
           loadData();
           showToast('Event published to DynamoDB!', 'success');
+        }}
+      />
+
+      <BookEventModal
+        isOpen={!!selectedEventForBooking}
+        onClose={() => setSelectedEventForBooking(null)}
+        event={selectedEventForBooking}
+        currentUser={currentUser}
+        onBookingSuccess={(res) => {
+          loadData();
+          if (activeTab === 'bookings') loadBookings();
+          showToast(`🎉 Reservation confirmed! Remaining seats: ${res.remainingSeats}`, 'success');
         }}
       />
 

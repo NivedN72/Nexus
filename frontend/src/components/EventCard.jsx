@@ -99,7 +99,7 @@ export default function EventCard({ event, onBook, bookingLoading }) {
         {/* CTA Button */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => onBook(event.eventId)}
+            onClick={() => onBook(event)}
             disabled={isSoldOut || bookingLoading}
             className={`w-full py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
               isSoldOut

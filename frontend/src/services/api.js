@@ -46,25 +46,34 @@ export const api = {
     return data;
   },
 
-  async bookEvent(eventId, currentUser) {
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    if (currentUser?.token) {
-      headers['Authorization'] = currentUser.token;
-    }
-
-    const payload = {
-      eventId,
-      userId: currentUser?.email || 'student-alice@campus.edu',
-    };
-
+  async requestBookingCode({ eventId, email, name }) {
     const res = await fetch(`${getBaseUrl()}/bookings`, {
       method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'request_code',
+        eventId,
+        email,
+        name,
+      }),
     });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to request code');
+    return data;
+  },
 
+  async verifyAndBookSeat({ eventId, email, name, authCode }) {
+    const res = await fetch(`${getBaseUrl()}/bookings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'verify_and_book',
+        eventId,
+        email,
+        name,
+        authCode,
+      }),
+    });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Booking failed');
     return data;
