@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, MapPin, Users, Ticket, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 
-export default function EventCard({ event, onBook, bookingLoading }) {
+export default function EventCard({ event, onBook, bookingLoading, canBook = true }) {
   const total = Number(event.totalSeats) || 0;
   const booked = Number(event.seatsBooked) || 0;
   const remaining = Math.max(0, total - booked);
@@ -97,7 +97,7 @@ export default function EventCard({ event, onBook, bookingLoading }) {
         </div>
 
         {/* CTA Button */}
-        <div className="flex items-center gap-3">
+        {canBook && <div className="flex items-center gap-3">
           <button
             onClick={() => onBook(event)}
             disabled={isSoldOut || bookingLoading}
@@ -117,7 +117,7 @@ export default function EventCard({ event, onBook, bookingLoading }) {
               </>
             )}
           </button>
-        </div>
+        </div>}
 
         {/* Cloud Computing Note */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">

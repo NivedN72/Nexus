@@ -94,6 +94,20 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(result['statusCode'],201)
         ticket=json.loads(result['body'])['booking']
         self.assertEqual(ticket['userId'],'visitor'); self.assertEqual(ticket['userEmail'],'visitor@example.com')
+    def test_admin_booking_rejected_before_database(self):
+        handler = load('bookEvent', self.aws)
+        for groups in (['admins'], ['admins', 'students'], '[admins]', '["students","admins"]', 'admins'):
+            result = handler.lambda_handler(event(groups=groups), None)
+            self.assertEqual(result['statusCode'], 403)
+            self.assertIn('Admin accounts', json.loads(result['body'])['error'])
+        self.assertEqual(self.aws.calls, 0)
+        self.assertEqual(self.aws.events['event']['seatsBooked'], 0)
+        self.assertEqual(self.aws.bookings, {})
+
+    def test_student_booking_still_allowed(self):
+        result = load('bookEvent', self.aws).lambda_handler(event(user='student', groups=['students']), None)
+        self.assertEqual(result['statusCode'], 201)
+
     def test_concurrent_duplicate_only_one_seat(self):
         self.aws.query_barrier = threading.Barrier(8)
         handler=load('bookEvent',self.aws)

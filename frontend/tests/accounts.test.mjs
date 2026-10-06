@@ -82,3 +82,13 @@ test('Successful password change with wrong account choice allows returning to s
  const challenge={challengeName:'NEW_PASSWORD_REQUIRED',session:'session',username:'student',clientId:'local-client',email:'person@example.com',accountType:'visitor',requiredAttributes:[]};
  await assert.rejects(()=>cognitoService.completeNewPassword(challenge,'fake'),error=>error.code==='AccountTypeMismatch' && error.passwordChanged===true);
 });
+
+
+test('Admin booking is blocked before any API request, including admins who are students', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; throw Error('Unexpected request'); };
+  for (const isStudent of [false, true]) {
+    await assert.rejects(() => api.bookEvent('event', {token: 'fake-token', role: 'admin', isStudent}), /Admin accounts cannot book seats/);
+  }
+  assert.equal(calls, 0);
+});

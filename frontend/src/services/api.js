@@ -44,6 +44,7 @@ export const api = {
   },
 
   async bookEvent(eventId, currentUser) {
+    if (currentUser?.role === 'admin') throw new Error('Admin accounts cannot book seats.');
     const res = await fetch(`${getBaseUrl()}/bookings`, {
       method: 'POST',
       headers: { ...authHeaders(currentUser), 'Content-Type': 'application/json' },

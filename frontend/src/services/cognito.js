@@ -11,6 +11,14 @@ const cognitoError = (data, fallback) => {
   return error;
 };
 
+const SESSION_KEY = 'nexus_auth_session';
+
+const decodeToken = (token) => {
+  const encoded = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+  const bytes = Uint8Array.from(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')), c => c.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+};
+
 const parseAuthResponse = (data, email, accountType, clientId) => {
   if (!data.AuthenticationResult?.IdToken) {
     if (data.ChallengeName === 'NEW_PASSWORD_REQUIRED' && data.Session) {
@@ -36,9 +44,7 @@ const parseAuthResponse = (data, email, accountType, clientId) => {
     const accessToken = data.AuthenticationResult?.AccessToken;
 
 
-    const encoded = idToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const bytes = Uint8Array.from(atob(encoded.padEnd(Math.ceil(encoded.length / 4) * 4, '=')), c => c.charCodeAt(0));
-    const payload = JSON.parse(new TextDecoder().decode(bytes));
+    const payload = decodeToken(idToken);
     const groups = Array.isArray(payload['cognito:groups']) ? payload['cognito:groups'] : [];
     const isStudent = groups.includes('students');
     const role = groups.includes('admins') ? 'admin' : isStudent ? 'student' : 'visitor';
@@ -53,11 +59,43 @@ const parseAuthResponse = (data, email, accountType, clientId) => {
     return {
       id: payload.sub, name: payload.name || email.split('@')[0], email: payload.email || email,
       role, isStudent, studentRequested: payload.profile === 'student-requested' && !isStudent,
-      token: idToken, accessToken, avatar: role === 'admin' ? '🛡️' : isStudent ? '🎓' : '👤'
+      token: idToken, accessToken, expiresAt: payload.exp * 1000, avatar: role === 'admin' ? '🛡️' : isStudent ? '🎓' : '👤'
     };
 };
 
 export const cognitoService = {
+  // Keep tokens for refreshes in this tab; never store passwords or challenge sessions.
+  saveSession(user) {
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ token: user.token, accessToken: user.accessToken }));
+    } catch {
+      // Signing in still works when browser storage is unavailable.
+    }
+  },
+
+  clearSession() {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch { /* Storage may be blocked. */ }
+  },
+
+  restoreSession() {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY));
+      if (!saved) return null;
+      const payload = decodeToken(saved.token);
+      const clientId = localStorage.getItem('nexus_client_id') || DEFAULT_CONFIG.cognito.clientId;
+      const poolId = localStorage.getItem('nexus_pool_id') || DEFAULT_CONFIG.cognito.userPoolId;
+      const issuer = `${getCognitoUrl()}${poolId}`;
+      if (!Number.isFinite(payload.exp) || payload.exp * 1000 <= Date.now()
+          || payload.aud !== clientId || payload.iss !== issuer || payload.token_use !== 'id'
+          || !payload.sub || !payload.email) throw new Error('Invalid saved session');
+      // Reconstruct identity and roles from claims, not cached display fields.
+      return parseAuthResponse({ AuthenticationResult: { IdToken: saved.token, AccessToken: saved.accessToken } }, payload.email, null, clientId);
+    } catch {
+      cognitoService.clearSession();
+      return null;
+    }
+  },
+
   async signUp(email, password, name) {
     const clientId = localStorage.getItem('nexus_client_id') || DEFAULT_CONFIG.cognito.clientId;
     const body = {

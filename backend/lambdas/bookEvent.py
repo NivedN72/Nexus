@@ -49,6 +49,11 @@ def lambda_handler(event, context):
     user_id = claims.get("sub")
     if not user_id:
         return response(401, {"error": "Sign in to book an event"})
+    groups = claims.get("cognito:groups", [])
+    if isinstance(groups, str):
+        groups = [part.strip().strip('[]" ') for part in groups.split(",")]
+    if "admins" in groups:
+        return response(403, {"error": "Admin accounts cannot book seats"})
     if str(claims.get("email_verified", "false")).lower() != "true":
         return response(403, {"error": "Verify your account email before booking"})
     try:

@@ -9,6 +9,7 @@ import AuthModal from './components/AuthModal';
 import BookEventModal from './components/BookEventModal';
 import AwsArchitectureBadge from './components/AwsArchitectureBadge';
 import { api } from './services/api';
+import { cognitoService } from './services/cognito';
 import { 
   Sparkles, Calendar, PlusCircle, Search, RefreshCw, Ticket, 
   AlertCircle, CheckCircle2, Shield, Info, ArrowRight, LogIn 
@@ -16,7 +17,7 @@ import {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('events');
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => cognitoService.restoreSession());
   
   // Data State
   const [events, setEvents] = useState([]);
@@ -47,6 +48,8 @@ export default function App() {
   const isAdmin = isSignedIn && currentUser.role === 'admin';
 
   const changeUser = (user) => {
+    if (user) cognitoService.saveSession(user);
+    else cognitoService.clearSession();
     dataRequest.current += 1;
     bookingRequest.current += 1;
     setItems([]);
@@ -106,7 +109,27 @@ export default function App() {
 
   const [selectedEventForBooking, setSelectedEventForBooking] = useState(null);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    const expireSession = () => {
+      if (!Number.isFinite(currentUser.expiresAt) || Date.now() >= currentUser.expiresAt) {
+        changeUser(null);
+        showToast('Your session has expired. Please sign in again.', 'error');
+      }
+    };
+    const timer = setTimeout(expireSession, Math.max(0, currentUser.expiresAt - Date.now()));
+    // Recheck when returning to a tab whose timers may have been suspended.
+    window.addEventListener('focus', expireSession);
+    document.addEventListener('visibilitychange', expireSession);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', expireSession);
+      document.removeEventListener('visibilitychange', expireSession);
+    };
+  }, [currentUser]);
+
   const handleBookEvent = (event) => {
+    if (isAdmin) return;
     setSelectedEventForBooking(event);
     if (!isSignedIn) setIsAuthOpen(true);
   };
@@ -251,6 +274,7 @@ export default function App() {
                     key={event.eventId}
                     event={event}
                     onBook={handleBookEvent}
+                    canBook={!isAdmin}
                     bookingLoading={bookingLoadingId === event.eventId}
                   />
                 ))}
@@ -425,7 +449,7 @@ export default function App() {
         }}
       />
 
-      {isSignedIn && selectedEventForBooking && (
+      {isSignedIn && !isAdmin && selectedEventForBooking && (
         <BookEventModal
           key={`${currentUser.id}:${selectedEventForBooking.eventId}`}
           isOpen={true}
