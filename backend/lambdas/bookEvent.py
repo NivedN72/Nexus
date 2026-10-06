@@ -8,11 +8,13 @@ from decimal import Decimal
 
 REGION = "ap-southeast-2"
 SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "")
+SES_SENDER_EMAIL = os.environ.get("SES_SENDER_EMAIL", "")
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 events_table = dynamodb.Table("Nexus-Events")
 bookings_table = dynamodb.Table("Nexus-Bookings")
 sns_client = boto3.client("sns", region_name=REGION)
+ses_client = boto3.client("ses", region_name=REGION)
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -33,25 +35,64 @@ def response(status_code, body):
     }
 
 def send_email_confirmation(email, code, event_title):
-    """Sends authorization email via SNS or logs to CloudWatch"""
-    subject = f"Nexus Event Pass: Your Authorization Code for {event_title}"
-    body = (
+    """Sends authorization email via Amazon SES directly to recipient, with SNS fallback"""
+    subject = f"Nexus Pass: Verification Code {code} for {event_title}"
+    body_text = (
         f"Hello!\n\n"
         f"You requested to book a seat for '{event_title}'.\n\n"
         f"Your 6-digit Booking Authorization Code is:\n"
         f"👉  {code}  👈\n\n"
-        f"Please enter this code on the website to confirm your ticket reservation.\n"
-        f"Note: Only 1 seat is permitted per email address.\n\n"
+        f"Please enter this code on the website to confirm your reservation.\n"
+        f"Note: Strictly 1 seat is permitted per email address.\n\n"
         f"— Nexus Campus Cloud Platform"
     )
+    body_html = f"""
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #0f172a; color: #f8fafc;">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <h1 style="color: #6366f1; margin: 0; font-size: 24px; letter-spacing: -0.5px;">NEXUS</h1>
+            <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0 0;">Campus Event Reservation</p>
+        </div>
+        <div style="background-color: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 24px; border: 1px solid #334155;">
+            <p style="margin: 0 0 8px 0; color: #cbd5e1; font-size: 14px;">Event:</p>
+            <h2 style="margin: 0; color: #ffffff; font-size: 18px;">{event_title}</h2>
+        </div>
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.5;">Enter the following 6-digit code on the website to confirm your seat:</p>
+        <div style="text-align: center; margin: 24px 0;">
+            <div style="display: inline-block; background: linear-gradient(135deg, #4f46e5, #06b6d4); padding: 14px 28px; border-radius: 12px; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #ffffff; font-family: monospace;">
+                {code}
+            </div>
+        </div>
+        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0;">Strictly 1 seat per email address allowed.</p>
+    </div>
+    """
     print(f"[AUTH CODE DISPATCH] Email: {email} | Code: {code} | Event: {event_title}")
 
+    # 1. Try Amazon SES (Direct delivery to recipient's email)
+    if SES_SENDER_EMAIL:
+        try:
+            ses_client.send_email(
+                Source=SES_SENDER_EMAIL,
+                Destination={"ToAddresses": [email]},
+                Message={
+                    "Subject": {"Data": subject, "Charset": "UTF-8"},
+                    "Body": {
+                        "Text": {"Data": body_text, "Charset": "UTF-8"},
+                        "Html": {"Data": body_html, "Charset": "UTF-8"}
+                    }
+                }
+            )
+            print(f"Successfully sent SES verification email to {email}")
+            return
+        except Exception as e:
+            print(f"SES dispatch failed: {str(e)}")
+
+    # 2. Fallback to SNS Topic if SES sender is not set or failed
     if SNS_TOPIC_ARN:
         try:
             sns_client.publish(
                 TopicArn=SNS_TOPIC_ARN,
                 Subject=subject,
-                Message=body
+                Message=body_text
             )
             print("Successfully published code to SNS topic.")
         except Exception as e:
