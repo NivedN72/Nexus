@@ -7,7 +7,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [accountType, setAccountType] = useState('visitor');
   const [signInType, setSignInType] = useState('visitor');
   const [challenge, setChallenge] = useState(null);
   const [newPassword, setNewPassword] = useState('');
@@ -79,7 +78,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     try {
       setLoading(true);
       setError('');
-      await cognitoService.signUp(email.trim(), password, name.trim(), accountType);
+      await cognitoService.signUp(email.trim(), password, name.trim());
       setSuccessMsg('Account created! Please check your email for the verification code.');
       setMode('confirm');
     } catch (err) {
@@ -127,7 +126,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           <div>
             <h2 className="text-xl font-bold text-white">
               {mode === 'signin' && 'Sign In with Cognito'}
-              {mode === 'signup' && 'Create Account'}
+              {mode === 'signup' && 'Create Visitor Account'}
               {mode === 'confirm' && 'Verify Your Email'}
               {mode === 'newpassword' && 'Set Your New Password'}
             </h2>
@@ -227,30 +226,27 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               )}
             </button>
 
+            {signInType === 'visitor' ? (
             <div className="pt-2 text-center text-xs text-slate-400">
               Don't have an account?{' '}
               <button
                 type="button"
-                onClick={() => { setAccountType(signInType); setMode('signup'); setError(''); setSuccessMsg(''); }}
+                onClick={() => { setMode('signup'); setError(''); setSuccessMsg(''); }}
                 className="text-indigo-400 font-semibold hover:underline"
               >
                 Sign Up
               </button>
             </div>
+            ) : (
+              <p className="pt-2 text-center text-xs text-slate-400">Student accounts are created by campus admins. Contact your admin for access.</p>
+            )}
           </form>
         )}
 
         {/* SIGN UP FORM */}
         {mode === 'signup' && (
           <form onSubmit={handleSignUp} className="space-y-4">
-            <div>
-              <label htmlFor="account-type" className="block text-xs font-semibold text-slate-400 mb-1">Account Type</label>
-              <select id="account-type" value={accountType} onChange={e => setAccountType(e.target.value)} className="w-full bg-slate-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white">
-                <option value="visitor">Visitor</option>
-                <option value="student">Student — request campus access</option>
-              </select>
-              <p className="text-xs text-slate-400 mt-2">Everyone can book events. Student access to Lost & Found requires campus admin approval; you can book while approval is pending.</p>
-            </div>
+            <p className="text-xs text-slate-400">Visitor registration is open to everyone. Student accounts are created by campus admins.</p>
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5 text-indigo-400" /> Full Name

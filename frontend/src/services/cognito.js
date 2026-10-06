@@ -58,7 +58,7 @@ const parseAuthResponse = (data, email, accountType, clientId) => {
 };
 
 export const cognitoService = {
-  async signUp(email, password, name, accountType = 'visitor') {
+  async signUp(email, password, name) {
     const clientId = localStorage.getItem('nexus_client_id') || DEFAULT_CONFIG.cognito.clientId;
     const body = {
       ClientId: clientId,
@@ -67,7 +67,7 @@ export const cognitoService = {
       UserAttributes: [
         { Name: 'email', Value: email },
         { Name: 'name', Value: name },
-        { Name: 'profile', Value: accountType === 'student' ? 'student-requested' : 'visitor' }
+        { Name: 'profile', Value: 'visitor' }
       ]
     };
 

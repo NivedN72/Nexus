@@ -29,10 +29,10 @@ test('Cognito: account type request cannot self-grant student access',async()=>{
  claims['cognito:groups']=['students'];user=await cognitoService.signIn('person@example.com','unused');assert.equal(user.role,'student');assert.equal(user.isStudent,true);
  claims['cognito:groups']=['admins'];user=await cognitoService.signIn('person@example.com','unused');assert.equal(user.role,'admin');assert.equal(user.isStudent,false);
 });
-test('Signup records request using standard profile attribute',async()=>{
+test('Public signup always registers a visitor, including obsolete student arguments',async()=>{
  let payload;globalThis.fetch=async(_,options)=>{payload=JSON.parse(options.body);return {ok:true,json:async()=>({})}};
  await cognitoService.signUp('person@example.com','unused','Person','student');
- assert.deepEqual(payload.UserAttributes.find(a=>a.Name==='profile'),{Name:'profile',Value:'student-requested'});
+ assert.deepEqual(payload.UserAttributes.find(a=>a.Name==='profile'),{Name:'profile',Value:'visitor'});
 });
 
 test('Sign-in account options validate membership and retain admin access',async()=>{
