@@ -27,3 +27,7 @@ yarn-error.log*
 *.sw?
 .DS_Store
 Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
