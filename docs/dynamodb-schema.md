@@ -1,0 +1,65 @@
+# Nexus AWS Resource Configuration & DynamoDB Specifications
+
+## Table 1: Nexus-Events
+- **Table Name:** `Nexus-Events`
+- **Partition Key (PK):** `eventId` (String)
+- **Sort Key (SK):** None
+- **Table settings:** Customize settings -> Capacity mode: **On-demand**
+- **Attributes:**
+  - `eventId`: String (UUID)
+  - `title`: String
+  - `description`: String
+  - `date`: String (ISO 8601: `YYYY-MM-DDTHH:mm:ssZ`)
+  - `venue`: String
+  - `totalSeats`: Number
+  - `seatsBooked`: Number (starts at 0)
+  - `createdBy`: String (Cognito userId)
+  - `createdAt`: String
+
+---
+
+## Table 2: Nexus-Bookings
+- **Table Name:** `Nexus-Bookings`
+- **Partition Key (PK):** `bookingId` (String)
+- **Sort Key (SK):** None
+- **Table settings:** Customize settings -> Capacity mode: **On-demand**
+- **Global Secondary Index (GSI):**
+  - **Index Name:** `userId-index`
+  - **Partition Key:** `userId` (String)
+  - **Sort Key:** `bookingTime` (String)
+  - **Attribute projections:** All
+- **Attributes:**
+  - `bookingId`: String (UUID)
+  - `userId`: String (Cognito sub / email)
+  - `eventId`: String
+  - `eventTitle`: String
+  - `bookingTime`: String
+  - `status`: String (`CONFIRMED` | `CANCELLED`)
+
+---
+
+## Table 3: Nexus-Items
+- **Table Name:** `Nexus-Items`
+- **Partition Key (PK):** `itemId` (String)
+- **Sort Key (SK):** None
+- **Table settings:** Customize settings -> Capacity mode: **On-demand**
+- **DynamoDB Streams:** Enable with **New and old images** (crucial for Phase 10 `matchItems`)
+- **Global Secondary Index (GSI):**
+  - **Index Name:** `type-status-index`
+  - **Partition Key:** `type` (String: `lost` or `found`)
+  - **Sort Key:** `status` (String: `open`, `matched`, `closed`)
+  - **Attribute projections:** All
+- **Attributes:**
+  - `itemId`: String (UUID)
+  - `type`: String (`lost` | `found`)
+  - `title`: String
+  - `description`: String
+  - `location`: String
+  - `date`: String
+  - `imageUrl`: String
+  - `tags`: List of Strings (detected by Rekognition)
+  - `status`: String (`open` | `matched` | `closed`)
+  - `reportedBy`: String (userId)
+  - `userEmail`: String (for match notification)
+  - `matchedWithItemId`: String (optional)
+  - `createdAt`: String
