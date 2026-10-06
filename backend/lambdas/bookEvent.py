@@ -3,12 +3,17 @@ import uuid
 import datetime
 import os
 import boto3
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from botocore.exceptions import ClientError
 from decimal import Decimal
 
 REGION = "ap-southeast-2"
 SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "")
 SES_SENDER_EMAIL = os.environ.get("SES_SENDER_EMAIL", "")
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 events_table = dynamodb.Table("Nexus-Events")
@@ -67,7 +72,28 @@ def send_email_confirmation(email, code, event_title):
     """
     print(f"[AUTH CODE DISPATCH] Email: {email} | Code: {code} | Event: {event_title}")
 
-    # 1. Try Amazon SES (Direct delivery to recipient's email)
+    # 1. Try Gmail SMTP if configured (Sends to ANY recipient worldwide with ZERO AWS sandbox!)
+    if SMTP_USER and SMTP_PASS:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"] = f"Nexus Events <{SMTP_USER}>"
+            msg["To"] = email
+
+            part1 = MIMEText(body_text, "plain", "utf-8")
+            part2 = MIMEText(body_html, "html", "utf-8")
+            msg.attach(part1)
+            msg.attach(part2)
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+                server.login(SMTP_USER, SMTP_PASS.replace(" ", ""))
+                server.sendmail(SMTP_USER, email, msg.as_string())
+            print(f"Successfully sent Gmail SMTP verification email to {email}")
+            return
+        except Exception as e:
+            print(f"Gmail SMTP dispatch failed: {str(e)}")
+
+    # 2. Try Amazon SES (Direct delivery to recipient's email)
     if SES_SENDER_EMAIL:
         try:
             ses_client.send_email(
