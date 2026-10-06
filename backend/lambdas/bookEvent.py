@@ -12,8 +12,8 @@ from decimal import Decimal
 REGION = "ap-southeast-2"
 SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "")
 SES_SENDER_EMAIL = os.environ.get("SES_SENDER_EMAIL", "")
-SMTP_USER = os.environ.get("SMTP_USER", "")
-SMTP_PASS = os.environ.get("SMTP_PASS", "")
+SMTP_USER = os.environ.get("SMTP_USER", "nexus.ccproj@gmail.com")
+SMTP_PASS = os.environ.get("SMTP_PASS", "ekbesskbeydzoqwy")
 
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
 events_table = dynamodb.Table("Nexus-Events")
