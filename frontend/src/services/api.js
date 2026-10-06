@@ -1,7 +1,11 @@
 import { DEFAULT_CONFIG } from '../config';
 
 const getBaseUrl = () => {
-  return localStorage.getItem('nexus_api_url') || DEFAULT_CONFIG.apiBaseUrl;
+  const stored = localStorage.getItem('nexus_api_url');
+  if (stored && !stored.includes('k65kqaeq')) {
+    return stored;
+  }
+  return DEFAULT_CONFIG.apiBaseUrl;
 };
 
 export const api = {

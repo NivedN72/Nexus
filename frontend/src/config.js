@@ -1,14 +1,12 @@
-// Nexus AWS Configuration
-// You can edit these defaults or customize them via the UI Settings drawer
+// Nexus AWS Configuration - Production Defaults Baked In
 
 export const DEFAULT_CONFIG = {
-  // Replace with your live API Gateway invoke URL (or set in UI Settings)
-  apiBaseUrl: localStorage.getItem('nexus_api_url') || 'https://243478202466-k65kqaeq.ap-southeast-2.execute-api.ap-southeast-2.amazonaws.com/prod',
+  apiBaseUrl: 'https://g72yaap6w0.execute-api.ap-southeast-2.amazonaws.com/prod',
   
   cognito: {
     region: 'ap-southeast-2',
-    userPoolId: localStorage.getItem('nexus_pool_id') || 'ap-southeast-2_xxxxxxxxx',
-    clientId: localStorage.getItem('nexus_client_id') || 'xxxxxxxxxxxxxxxxxxxxxxxxxx',
+    userPoolId: 'ap-southeast-2_a4JMIQqzK',
+    clientId: '36ru7i36ng8jpvmhhhg3s4cdub',
   },
   
   s3BucketName: 'nexus-item-photos-nived2026',
