@@ -33,14 +33,13 @@ def lambda_handler(event, context):
         claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
         user_id = claims.get("sub") or claims.get("email")
 
-        # Mock fallback for direct Lambda test events in AWS Console
-        if not user_id:
-            headers = event.get("headers") or {}
-            user_id = headers.get("x-mock-user", "student-user-01")
-
         # 2. Parse request body
         body = json.loads(event.get("body") or "{}")
         event_id = body.get("eventId")
+
+        # Mock fallback for direct testing
+        if not user_id:
+            user_id = body.get("userId") or event.get("headers", {}).get("x-mock-user", "student-alice@campus.edu")
         if not event_id:
             return response(400, {"error": "Missing required field: eventId"})
 

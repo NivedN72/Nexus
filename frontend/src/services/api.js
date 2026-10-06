@@ -28,15 +28,17 @@ export const api = {
     };
     if (currentUser?.token) {
       headers['Authorization'] = currentUser.token;
-    } else {
-      // Mock admin fallback for presentation demo
-      headers['x-mock-role'] = 'admin';
     }
+
+    const payload = {
+      ...eventData,
+      isAdmin: currentUser?.role === 'admin' || !currentUser?.token,
+    };
 
     const res = await fetch(`${getBaseUrl()}/events`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(eventData),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
@@ -50,15 +52,17 @@ export const api = {
     };
     if (currentUser?.token) {
       headers['Authorization'] = currentUser.token;
-    } else {
-      // Mock student fallback
-      headers['x-mock-user'] = currentUser?.email || 'student-alice@campus.edu';
     }
+
+    const payload = {
+      eventId,
+      userId: currentUser?.email || 'student-alice@campus.edu',
+    };
 
     const res = await fetch(`${getBaseUrl()}/bookings`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ eventId }),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
@@ -70,11 +74,10 @@ export const api = {
     const headers = {};
     if (currentUser?.token) {
       headers['Authorization'] = currentUser.token;
-    } else {
-      headers['x-mock-user'] = currentUser?.email || 'student-alice@campus.edu';
     }
 
-    const res = await fetch(`${getBaseUrl()}/bookings/me`, { headers });
+    const userParam = encodeURIComponent(currentUser?.email || 'student-alice@campus.edu');
+    const res = await fetch(`${getBaseUrl()}/bookings/me?userId=${userParam}`, { headers });
     if (!res.ok) throw new Error('Failed to fetch user bookings');
     return res.json();
   },
@@ -93,15 +96,18 @@ export const api = {
     };
     if (currentUser?.token) {
       headers['Authorization'] = currentUser.token;
-    } else {
-      headers['x-mock-user'] = currentUser?.email || 'student-reporter@campus.edu';
-      headers['x-mock-email'] = currentUser?.email || 'student-reporter@campus.edu';
     }
+
+    const payload = {
+      ...itemData,
+      reportedBy: currentUser?.email || 'student-reporter@campus.edu',
+      userEmail: currentUser?.email || 'student-reporter@campus.edu',
+    };
 
     const res = await fetch(`${getBaseUrl()}/items`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(itemData),
+      body: JSON.stringify(payload),
     });
 
     const data = await res.json();
