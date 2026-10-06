@@ -3,18 +3,23 @@ import { X, Lock, Mail, User, KeyRound, AlertCircle, CheckCircle2 } from 'lucide
 import { cognitoService } from '../services/cognito';
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
-  const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'confirm'
+  const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'confirm' | 'newpassword'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [accountType, setAccountType] = useState('visitor');
   const [signInType, setSignInType] = useState('visitor');
+  const [challenge, setChallenge] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [requiredDetails, setRequiredDetails] = useState({});
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
+    setChallenge(null); setNewPassword(''); setConfirmPassword(''); setRequiredDetails({});
     if (isOpen) {
       setMode('signin'); setError(''); setSuccessMsg(''); setPassword(''); setCode('');
     }
@@ -22,17 +27,43 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
   if (!isOpen) return null;
 
+  const acceptAuthResult = (result) => {
+    setPassword(''); setNewPassword(''); setConfirmPassword(''); setSuccessMsg('');
+    if (result.challengeName === 'NEW_PASSWORD_REQUIRED') {
+      setChallenge(result);
+      setRequiredDetails(Object.fromEntries(result.requiredAttributes.map(key => [key, result.attributes?.[key] || (key === 'email' ? result.email : '')])));
+      setMode('newpassword');
+    } else {
+      setChallenge(null); setRequiredDetails({});
+      onAuthSuccess(result);
+    }
+  };
+
+  const handleNewPassword = async (e) => {
+    e.preventDefault(); setError('');
+    if (newPassword !== confirmPassword) { setError('The new passwords do not match.'); return; }
+    try {
+      setLoading(true);
+      const result = await cognitoService.completeNewPassword(challenge, newPassword, requiredDetails);
+      acceptAuthResult(result);
+    } catch (err) {
+      if (err.passwordChanged || err.code === 'NotAuthorizedException') {
+        setChallenge(null); setNewPassword(''); setConfirmPassword(''); setRequiredDetails({}); setMode('signin');
+      }
+      setError(err.passwordChanged ? `Password updated. ${err.message}` : err.message || 'Could not set your new password.');
+    } finally { setLoading(false); }
+  };
+
   const handleSignIn = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       setError('');
       const user = await cognitoService.signIn(email.trim(), password, signInType);
-      setPassword('');
-      onAuthSuccess(user);
+      acceptAuthResult(user);
     } catch (err) {
       console.error(err);
-      if (err.message?.includes('UserNotConfirmedException')) {
+      if (err.code === 'UserNotConfirmedException' || err.message?.includes('UserNotConfirmedException')) {
         setMode('confirm');
         setError('Your account is not verified yet. Enter the code sent to your email.');
       } else {
@@ -77,10 +108,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-      <div className="glass-card w-full max-w-md rounded-2xl p-6 border border-white/10 shadow-2xl relative">
+      <div className="glass-card w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-6 border border-white/10 shadow-2xl relative">
         
         {/* Close Button */}
         <button
+          disabled={loading}
           onClick={onClose}
           className="absolute top-5 right-5 text-slate-400 hover:text-white transition-colors"
         >
@@ -97,6 +129,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               {mode === 'signin' && 'Sign In with Cognito'}
               {mode === 'signup' && 'Create Account'}
               {mode === 'confirm' && 'Verify Your Email'}
+              {mode === 'newpassword' && 'Set Your New Password'}
             </h2>
             <p className="text-xs text-slate-400">One account for event booking and your tickets</p>
           </div>
@@ -114,6 +147,29 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
+        )}
+
+        {mode === 'newpassword' && (
+          <form onSubmit={handleNewPassword} className="space-y-4">
+            <p className="text-sm text-slate-300">Your account uses a temporary password. Choose a permanent password to finish signing in.</p>
+            <div>
+              <label htmlFor="new-password" className="block text-xs font-semibold text-slate-400 mb-1">New password</label>
+              <input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={loading} required className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" />
+            </div>
+            <div>
+              <label htmlFor="confirm-new-password" className="block text-xs font-semibold text-slate-400 mb-1">Confirm new password</label>
+              <input id="confirm-new-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} disabled={loading} required className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" />
+            </div>
+            {challenge?.requiredAttributes.map(key => (
+              <div key={key}>
+                <label htmlFor={`required-${key}`} className="block text-xs font-semibold text-slate-400 mb-1 capitalize">{key === 'name' ? 'Full name' : key.replace(/_/g, ' ')}</label>
+                <input id={`required-${key}`} type={key === 'email' ? 'email' : 'text'} value={requiredDetails[key] || ''} onChange={e => setRequiredDetails(previous => ({ ...previous, [key]: e.target.value }))} disabled={loading} required className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" />
+              </div>
+            ))}
+            <p className="text-xs text-slate-400">Use a password that meets your account's password policy. Any password requirements will be shown if it is rejected.</p>
+            <button type="submit" disabled={loading} className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold disabled:opacity-50">{loading ? 'Updating…' : 'Set Password & Sign In'}</button>
+            <button type="button" disabled={loading} onClick={() => { setChallenge(null); setNewPassword(''); setConfirmPassword(''); setRequiredDetails({}); setMode('signin'); setError(''); }} className="w-full text-xs text-indigo-400">Back to Sign In</button>
+          </form>
         )}
 
         {/* SIGN IN FORM */}

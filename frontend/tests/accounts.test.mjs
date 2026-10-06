@@ -46,3 +46,39 @@ test('Sign-in account options validate membership and retain admin access',async
  groups=['admins'];
  assert.equal((await cognitoService.signIn('person@example.com','unused','student')).role,'admin');
 });
+
+test('New password challenge preserves session, canonical username and required attributes',async()=>{
+ const calls=[];
+ const challengeReply={ChallengeName:'NEW_PASSWORD_REQUIRED',Session:'opaque-test-session',ChallengeParameters:{USER_ID_FOR_SRP:'canonical-user',requiredAttributes:'["userAttributes.name"]',userAttributes:'{"email":"person@example.com"}'}};
+ const token='header.'+Buffer.from(JSON.stringify({sub:'user-sub',email:'person@example.com',name:'Person','cognito:groups':['students']})).toString('base64url')+'.signature';
+ globalThis.fetch=async(_,options)=>{
+  calls.push({target:options.headers['X-Amz-Target'],payload:JSON.parse(options.body)});
+  return {ok:true,json:async()=>calls.length===1?challengeReply:{AuthenticationResult:{IdToken:token,AccessToken:'fake-access'}}};
+ };
+ const challenge=await cognitoService.signIn('person@example.com','fake-temporary','student');
+ assert.equal(challenge.token,undefined);assert.equal(challenge.challengeName,'NEW_PASSWORD_REQUIRED');
+ assert.deepEqual(challenge.requiredAttributes,['name']);
+ const user=await cognitoService.completeNewPassword(challenge,'fake-new-password',{name:' Person ',email:'should-not-be-sent@example.com'});
+ assert.equal(user.role,'student');assert.equal(user.id,'user-sub');
+ assert.equal(calls[1].target,'AWSCognitoIdentityProviderService.RespondToAuthChallenge');
+ assert.deepEqual(calls[1].payload,{ClientId:'local-client',ChallengeName:'NEW_PASSWORD_REQUIRED',Session:'opaque-test-session',ChallengeResponses:{USERNAME:'canonical-user',NEW_PASSWORD:'fake-new-password','userAttributes.name':'Person'}});
+ assert.equal(globalThis.localStorage.getItem('session'),null);
+});
+test('Rejected password propagates policy error without signing in or consuming local challenge',async()=>{
+ const challenge={challengeName:'NEW_PASSWORD_REQUIRED',session:'test-session',username:'canonical',clientId:'local-client',email:'person@example.com',accountType:'student',requiredAttributes:[]};
+ globalThis.fetch=async()=>({ok:false,json:async()=>({__type:'InvalidPasswordException',message:'Password must include a symbol'})});
+ await assert.rejects(()=>cognitoService.completeNewPassword(challenge,'fake'),error=>error.code==='InvalidPasswordException' && !error.passwordChanged && error.message.includes('symbol'));
+ assert.equal(challenge.session,'test-session');
+});
+test('Missing session and required details fail before any request',async()=>{
+ globalThis.fetch=async()=>{throw Error('Unexpected fetch')};
+ await assert.rejects(()=>cognitoService.completeNewPassword(null,'fake'),/restart sign-in/);
+ const challenge={challengeName:'NEW_PASSWORD_REQUIRED',session:'session',requiredAttributes:['name']};
+ await assert.rejects(()=>cognitoService.completeNewPassword(challenge,'fake',{}),/Enter your name/);
+});
+test('Successful password change with wrong account choice allows returning to sign-in',async()=>{
+ const token='header.'+Buffer.from(JSON.stringify({sub:'student','cognito:groups':['students']})).toString('base64url')+'.signature';
+ globalThis.fetch=async()=>({ok:true,json:async()=>({AuthenticationResult:{IdToken:token}})});
+ const challenge={challengeName:'NEW_PASSWORD_REQUIRED',session:'session',username:'student',clientId:'local-client',email:'person@example.com',accountType:'visitor',requiredAttributes:[]};
+ await assert.rejects(()=>cognitoService.completeNewPassword(challenge,'fake'),error=>error.code==='AccountTypeMismatch' && error.passwordChanged===true);
+});
