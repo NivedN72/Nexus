@@ -1,3 +1,4 @@
+import ModalShell from './ModalShell';
 import React, { useState, useEffect } from 'react';
 import { X, Lock, Mail, User, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { cognitoService } from '../services/cognito';
@@ -106,43 +107,43 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
-      <div className="glass-card w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-6 border border-white/10 shadow-2xl relative">
+    <ModalShell label="Account access" title="Your campus. One account." description="Visitor bookings. Student connections. Your tickets, together." className="nexus-dialog-auth">
         
         {/* Close Button */}
         <button
           disabled={loading}
+          aria-label="Close account access"
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-5 right-5 text-muted hover:text-ink transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Modal Header */}
         <div className="flex items-center gap-2 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600/30 flex items-center justify-center text-indigo-400">
+          <div className="w-8 h-8 rounded-lg bg-accent/30 flex items-center justify-center text-accent-ink">
             <Lock className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-xl font-bold text-ink">
               {mode === 'signin' && 'Sign In with Cognito'}
               {mode === 'signup' && 'Create Visitor Account'}
               {mode === 'confirm' && 'Verify Your Email'}
               {mode === 'newpassword' && 'Set Your New Password'}
             </h2>
-            <p className="text-xs text-slate-400">One account for event booking and your tickets</p>
+            <p className="text-xs text-muted">One account for event booking and your tickets</p>
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-danger/15 border border-danger/25 text-danger text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-success/15 border border-success/25 text-success text-xs flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{successMsg}</span>
           </div>
@@ -150,24 +151,24 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
         {mode === 'newpassword' && (
           <form onSubmit={handleNewPassword} className="space-y-4">
-            <p className="text-sm text-slate-300">Your account uses a temporary password. Choose a permanent password to finish signing in.</p>
+            <p className="text-sm text-ink">Your account uses a temporary password. Choose a permanent password to finish signing in.</p>
             <div>
-              <label htmlFor="new-password" className="block text-xs font-semibold text-slate-400 mb-1">New password</label>
-              <input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={loading} required className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" />
+              <label htmlFor="new-password" className="block text-xs font-semibold text-muted mb-1">New password</label>
+              <input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} disabled={loading} required className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent-ink/25" />
             </div>
             <div>
-              <label htmlFor="confirm-new-password" className="block text-xs font-semibold text-slate-400 mb-1">Confirm new password</label>
-              <input id="confirm-new-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} disabled={loading} required className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" />
+              <label htmlFor="confirm-new-password" className="block text-xs font-semibold text-muted mb-1">Confirm new password</label>
+              <input id="confirm-new-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} disabled={loading} required className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent-ink/25" />
             </div>
             {challenge?.requiredAttributes.map(key => (
               <div key={key}>
-                <label htmlFor={`required-${key}`} className="block text-xs font-semibold text-slate-400 mb-1 capitalize">{key === 'name' ? 'Full name' : key.replace(/_/g, ' ')}</label>
-                <input id={`required-${key}`} type={key === 'email' ? 'email' : 'text'} value={requiredDetails[key] || ''} onChange={e => setRequiredDetails(previous => ({ ...previous, [key]: e.target.value }))} disabled={loading} required className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                <label htmlFor={`required-${key}`} className="block text-xs font-semibold text-muted mb-1 capitalize">{key === 'name' ? 'Full name' : key.replace(/_/g, ' ')}</label>
+                <input id={`required-${key}`} type={key === 'email' ? 'email' : 'text'} value={requiredDetails[key] || ''} onChange={e => setRequiredDetails(previous => ({ ...previous, [key]: e.target.value }))} disabled={loading} required className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent-ink/25" />
               </div>
             ))}
-            <p className="text-xs text-slate-400">Use a password that meets your account's password policy. Any password requirements will be shown if it is rejected.</p>
-            <button type="submit" disabled={loading} className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold disabled:opacity-50">{loading ? 'Updating…' : 'Set Password & Sign In'}</button>
-            <button type="button" disabled={loading} onClick={() => { setChallenge(null); setNewPassword(''); setConfirmPassword(''); setRequiredDetails({}); setMode('signin'); setError(''); }} className="w-full text-xs text-indigo-400">Back to Sign In</button>
+            <p className="text-xs text-muted">Use a password that meets your account's password policy. Any password requirements will be shown if it is rejected.</p>
+            <button type="submit" disabled={loading} className="w-full py-3 rounded-xl bg-accent text-ink font-bold disabled:opacity-50">{loading ? 'Updating…' : 'Set Password & Sign In'}</button>
+            <button type="button" disabled={loading} onClick={() => { setChallenge(null); setNewPassword(''); setConfirmPassword(''); setRequiredDetails({}); setMode('signin'); setError(''); }} className="w-full text-xs text-accent-ink">Back to Sign In</button>
           </form>
         )}
 
@@ -175,41 +176,41 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         {mode === 'signin' && (
           <form onSubmit={handleSignIn} className="space-y-4">
             <fieldset disabled={loading}>
-              <legend className="text-xs font-semibold text-slate-400 mb-2">Sign in as</legend>
+              <legend className="text-xs font-semibold text-muted mb-2">Sign in as</legend>
               <div className="grid grid-cols-2 gap-2">
                 {['visitor', 'student'].map(type => (
-                  <label key={type} className={`flex items-center justify-center gap-2 cursor-pointer px-4 py-3 rounded-xl border text-sm font-semibold ${signInType === type ? 'bg-indigo-600/25 border-indigo-500 text-indigo-200' : 'bg-slate-900/60 border-white/10 text-slate-400'}`}>
-                    <input type="radio" name="sign-in-type" value={type} checked={signInType === type} onChange={() => { setSignInType(type); setError(''); }} className="accent-indigo-500" />
+                  <label key={type} className={`flex items-center justify-center gap-2 cursor-pointer px-4 py-3 rounded-xl border text-sm font-semibold ${signInType === type ? 'bg-accent/25 border-accent-ink/25 text-accent-ink' : 'bg-soft border-line text-muted'}`}>
+                    <input type="radio" name="sign-in-type" value={type} checked={signInType === type} onChange={() => { setSignInType(type); setError(''); }} className="accent-accent-ink" />
                     {type === 'visitor' ? 'Visitor' : 'Student'}
                   </label>
                 ))}
               </div>
-              <p className="text-xs text-slate-400 mt-2">{signInType === 'visitor' ? 'Book campus events and view your tickets.' : 'For approved students and campus admins. Student access is required for Lost & Found.'}</p>
+              <p className="text-xs text-muted mt-2">{signInType === 'visitor' ? 'Book campus events and view your tickets.' : 'For approved students and campus admins. Student access is required for Lost & Found.'}</p>
             </fieldset>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-indigo-400" /> Email Address
+              <label className="block text-xs font-semibold text-muted mb-1 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-accent-ink" /> Email Address
               </label>
               <input
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent-ink/25"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-indigo-400" /> Password
+              <label className="block text-xs font-semibold text-muted mb-1 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-accent-ink" /> Password
               </label>
               <input
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent-ink/25"
                 required
               />
             </div>
@@ -217,28 +218,28 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-3 rounded-xl font-bold text-sm bg-accent hover:bg-accent text-ink shadow-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-line border-t-ink rounded-full animate-spin"></span>
               ) : (
                 'Sign In'
               )}
             </button>
 
             {signInType === 'visitor' ? (
-            <div className="pt-2 text-center text-xs text-slate-400">
+            <div className="pt-2 text-center text-xs text-muted">
               Don't have an account?{' '}
               <button
                 type="button"
                 onClick={() => { setMode('signup'); setError(''); setSuccessMsg(''); }}
-                className="text-indigo-400 font-semibold hover:underline"
+                className="text-accent-ink font-semibold hover:underline"
               >
                 Sign Up
               </button>
             </div>
             ) : (
-              <p className="pt-2 text-center text-xs text-slate-400">Student accounts are created by campus admins. Contact your admin for access.</p>
+              <p className="pt-2 text-center text-xs text-muted">Student accounts are created by campus admins. Contact your admin for access.</p>
             )}
           </form>
         )}
@@ -246,45 +247,45 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         {/* SIGN UP FORM */}
         {mode === 'signup' && (
           <form onSubmit={handleSignUp} className="space-y-4">
-            <p className="text-xs text-slate-400">Visitor registration is open to everyone. Student accounts are created by campus admins.</p>
+            <p className="text-xs text-muted">Visitor registration is open to everyone. Student accounts are created by campus admins.</p>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-indigo-400" /> Full Name
+              <label className="block text-xs font-semibold text-muted mb-1 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-accent-ink" /> Full Name
               </label>
               <input
                 type="text"
                 placeholder="Jane Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent-ink/25"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-indigo-400" /> Email Address
+              <label className="block text-xs font-semibold text-muted mb-1 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-accent-ink" /> Email Address
               </label>
               <input
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent-ink/25"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-indigo-400" /> Password (Min 8 chars, 1 uppercase, 1 number)
+              <label className="block text-xs font-semibold text-muted mb-1 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-accent-ink" /> Password (Min 8 chars, 1 uppercase, 1 number)
               </label>
               <input
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink focus:outline-none focus:border-accent-ink/25"
                 required
               />
             </div>
@@ -292,21 +293,21 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-3 rounded-xl font-bold text-sm bg-accent hover:bg-accent text-ink shadow-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-line border-t-ink rounded-full animate-spin"></span>
               ) : (
                 'Create Account'
               )}
             </button>
 
-            <div className="pt-2 text-center text-xs text-slate-400">
+            <div className="pt-2 text-center text-xs text-muted">
               Already have an account?{' '}
               <button
                 type="button"
                 onClick={() => { setMode('signin'); setError(''); setSuccessMsg(''); }}
-                className="text-indigo-400 font-semibold hover:underline"
+                className="text-accent-ink font-semibold hover:underline"
               >
                 Sign In
               </button>
@@ -317,20 +318,20 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         {/* CONFIRM CODE FORM */}
         {mode === 'confirm' && (
           <form onSubmit={handleConfirm} className="space-y-4">
-            <p className="text-xs text-slate-300">
-              Enter the 6-digit confirmation code Cognito sent to <span className="font-semibold text-white">{email}</span>:
+            <p className="text-xs text-ink">
+              Enter the 6-digit confirmation code Cognito sent to <span className="font-semibold text-ink">{email}</span>:
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1 flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-indigo-400" /> Verification Code
+              <label className="block text-xs font-semibold text-muted mb-1 flex items-center gap-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-accent-ink" /> Verification Code
               </label>
               <input
                 type="text"
                 placeholder="123456"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2.5 text-center text-lg font-mono tracking-widest text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-soft border border-line rounded-xl px-3.5 py-2.5 text-center text-lg font-mono tracking-widest text-ink focus:outline-none focus:border-accent-ink/25"
                 required
               />
             </div>
@@ -338,27 +339,26 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl font-bold text-sm bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-3 rounded-xl font-bold text-sm bg-success/10 hover:bg-success/10 text-ink shadow-sm shadow-success flex items-center justify-center gap-2 transition-colors active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span className="w-4 h-4 border-2 border-line border-t-ink rounded-full animate-spin"></span>
               ) : (
                 'Confirm Account'
               )}
             </button>
 
-            <div className="pt-2 text-center text-xs text-slate-400">
+            <div className="pt-2 text-center text-xs text-muted">
               <button
                 type="button"
                 onClick={() => { setMode('signin'); setError(''); }}
-                className="text-indigo-400 font-semibold hover:underline"
+                className="text-accent-ink font-semibold hover:underline"
               >
                 Back to Sign In
               </button>
             </div>
           </form>
         )}
-      </div>
-    </div>
+    </ModalShell>
   );
 }

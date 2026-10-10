@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
+import HomePage from './components/HomePage';
+import PageHeader from './components/PageHeader';
 import EventCard from './components/EventCard';
+import BookingPass from './components/BookingPass';
 import ItemCard from './components/ItemCard';
 import ReportItemModal from './components/ReportItemModal';
 import CreateEventModal from './components/CreateEventModal';
@@ -16,9 +19,11 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('events');
+  const [activeTab, setActiveTab] = useState('home');
   const [currentUser, setCurrentUser] = useState(() => cognitoService.restoreSession());
   
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [activeTab]);
+
   // Data State
   const [events, setEvents] = useState([]);
   const [items, setItems] = useState([]);
@@ -57,7 +62,7 @@ export default function App() {
     setIsReportOpen(false);
     setIsCreateEventOpen(false);
     setCurrentUser(user);
-    if (!user) { setActiveTab('events'); setSelectedEventForBooking(null); }
+    if (!user) { setActiveTab('home'); setSelectedEventForBooking(null); }
     else if (selectedEventForBooking) setActiveTab('events');
   };
 
@@ -142,7 +147,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100">
+    <div className="min-h-[100dvh] flex flex-col bg-canvas text-ink">
       
       {/* Navbar */}
       <Navbar
@@ -156,18 +161,18 @@ export default function App() {
 
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed top-20 right-6 z-50 animate-bounce">
+        <div className="fixed top-20 right-4 z-50 max-w-[calc(100vw-32px)] animate-fade-in">
           <div
-            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold backdrop-blur-xl border ${
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-sm text-xs font-semibold backdrop-blur-xl border ${
               toast.type === 'error'
-                ? 'bg-rose-500/20 text-rose-200 border-rose-500/40 glow-cyan'
-                : 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                ? 'bg-danger/20 text-danger border-danger/25 '
+                : 'bg-success/20 text-success border-success/25'
             }`}
           >
             {toast.type === 'error' ? (
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-danger shrink-0" />
             ) : (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
             )}
             <span>{toast.message}</span>
           </div>
@@ -175,244 +180,46 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 nexus-main max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24">
         
-        {/* Hero Banner */}
-        <div className="relative glass-card rounded-3xl p-6 sm:p-8 mb-8 border border-white/10 overflow-hidden shadow-2xl">
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-cyan-600/15 rounded-full blur-3xl pointer-events-none"></div>
+        {activeTab === 'home' && <HomePage events={events} loading={loading} navigate={setActiveTab} onBook={handleBookEvent} canBook={!isAdmin} />}
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-indigo-300 mb-3">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                Serverless Cloud Architecture on AWS Free Tier
+        {activeTab === 'events' && <section className="nexus-service-page animate-fade-in">
+          <PageHeader Icon={Calendar} eyebrow="OPEN TO EVERYONE" title="Campus Events" description="Publicly visible • Live seat counter with DynamoDB race-condition protection">
+            {isAdmin && <button onClick={() => setIsCreateEventOpen(true)} className="nexus-button-primary"><PlusCircle size={18}/>Create Event (Admin)</button>}
+            <button onClick={loadData} title="Refresh from DynamoDB" aria-label="Refresh events" className="nexus-button-secondary"><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button>
+          </PageHeader>
+          <div className="nexus-section-strip"><h2>Upcoming Events</h2><span>{loading && !events.length ? 'Loading…' : events.length + (events.length===1?' event':' events')}</span></div>
+          {loading && !events.length ? <div className="nexus-event-board">{[1,2,3].map(n=><div key={n} className="nexus-skeleton animate-pulse" />)}</div> : !events.length ?
+            <div className="nexus-empty-state"><Calendar size={44}/><h3>No campus events found</h3><p>Check back soon for upcoming campus events.</p>{isAdmin && <button className="nexus-button-primary" onClick={()=>setIsCreateEventOpen(true)}>Create Event</button>}</div> :
+            <div className="nexus-event-board">{events.map(event=><EventCard key={event.eventId} event={event} onBook={handleBookEvent} canBook={!isAdmin} bookingLoading={bookingLoadingId===event.eventId} />)}</div>}
+        </section>}
+
+        {activeTab === 'lostfound' && <section className="nexus-service-page animate-fade-in">
+          <PageHeader Icon={Search} eyebrow="STUDENT COMMUNITY" title="Lost & Found" description="Photos analyzed by AWS Rekognition & auto-matched via DynamoDB Streams">
+            {isStudent && <><button onClick={openReport} className="nexus-button-primary"><PlusCircle size={18}/>Report Lost / Found</button><button onClick={loadData} aria-label="Refresh items" className="nexus-button-secondary"><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button></>}
+          </PageHeader>
+          {!isSignedIn ? <AccessPanel Icon={Search} title="Sign in to Lost & Found" description="Lost & Found requires approved student access." onSignIn={()=>setIsAuthOpen(true)} /> : !isStudent ?
+            <AccessPanel Icon={Shield} title="Lost & Found is for verified students" description="Ask a campus admin to verify your student status. You can still book events and view your tickets." onBrowse={()=>setActiveTab('events')} /> :
+            <div className="nexus-gallery-layout">
+              <aside className="nexus-gallery-sidebar"><h2>AI Matching Gallery</h2><p>Lost, found, or reunited.</p><nav aria-label="Filter items">{['all','lost','found','matched'].map(tab=><button key={tab} onClick={()=>setItemFilter(tab)} aria-pressed={itemFilter===tab} className={itemFilter===tab?'is-active':''}><span>{tab==='all'?'All items':tab}</span><ArrowRight size={15}/></button>)}</nav><div className="nexus-gallery-note"><Sparkles size={23}/><p>AWS Rekognition Vision Tags help identify possible matches.</p></div></aside>
+              <div className="nexus-gallery-content"><div className="nexus-section-strip"><h2>{itemFilter==='all'?'Lost & Found AI Matching Gallery':itemFilter.charAt(0).toUpperCase()+itemFilter.slice(1)+' items'}</h2><span>{filteredItems.length} items</span></div>
+                {loading && !items.length ? <div className="nexus-items-grid">{[1,2,3].map(n=><div key={n} className="nexus-skeleton animate-pulse"/>)}</div> : !filteredItems.length ? <div className="nexus-empty-state"><Search size={44}/><h3>No items found</h3><p>Be the first to report a lost or found item with a photo.</p><button onClick={openReport} className="nexus-button-primary">Report Item</button></div> : <div className="nexus-items-grid">{filteredItems.map(item=><ItemCard key={item.itemId} item={item}/>)}</div>}
               </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
-                Campus Events & AI-Assisted Lost & Found
-              </h1>
-              <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-                Atomic conditional seat bookings with DynamoDB & automatic computer vision item matching using AWS Rekognition and DynamoDB Streams.
-              </p>
-            </div>
+            </div>}
+        </section>}
 
-            {/* Quick Actions */}
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={openReport}
-                className="px-4 py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-600/25 flex items-center gap-2 transition-all active:scale-[0.98]"
-              >
-                <Search className="w-4 h-4" />
-                Report Lost / Found
-              </button>
-
-              {isAdmin && (
-                <button
-                  onClick={() => setIsCreateEventOpen(true)}
-                  className="px-4 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 flex items-center gap-2 transition-all active:scale-[0.98]"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  Create Event (Admin)
-                </button>
-              )}
-
-              <button
-                onClick={loadData}
-                title="Refresh from DynamoDB"
-                className="p-2.5 rounded-xl bg-slate-900/60 hover:bg-white/10 border border-white/5 text-slate-300 transition-all"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* TAB 1: CAMPUS EVENTS */}
-        {activeTab === 'events' && (
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <Calendar className="w-6 h-6 text-indigo-400" />
-                  Upcoming Events
-                </h2>
-                <p className="text-xs text-slate-400">Publicly visible &bull; Live seat counter with DynamoDB race-condition protection</p>
-              </div>
-
-              {isAdmin && (
-                <button
-                  onClick={() => setIsCreateEventOpen(true)}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-all"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  Add Event
-                </button>
-              )}
-            </div>
-
-            {loading && events.length === 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3].map((n) => (
-                  <div key={n} className="glass-card rounded-2xl p-6 h-72 animate-pulse bg-slate-900/40"></div>
-                ))}
-              </div>
-            ) : events.length === 0 ? (
-              <div className="glass-card rounded-2xl p-12 text-center text-slate-400 border border-white/5">
-                <Calendar className="w-12 h-12 mx-auto mb-3 text-slate-600" />
-                <h3 className="text-lg font-bold text-white mb-1">No campus events found</h3>
-                <p className="text-xs max-w-sm mx-auto mb-4">Check back soon for upcoming campus events.</p>
-                {isAdmin && (
-                  <button onClick={() => setIsCreateEventOpen(true)} className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white">
-                    Create Event
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((event) => (
-                  <EventCard
-                    key={event.eventId}
-                    event={event}
-                    onBook={handleBookEvent}
-                    canBook={!isAdmin}
-                    bookingLoading={bookingLoadingId === event.eventId}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {!isSignedIn && activeTab !== 'events' && (
-          <section className="glass-card rounded-2xl p-12 text-center border border-white/5">
-            <LogIn className="w-10 h-10 mx-auto mb-3 text-indigo-400" />
-            <h2 className="text-xl font-bold mb-2">Sign in to {activeTab === 'lostfound' ? 'Lost & Found' : 'My Bookings'}</h2>
-            <p className="text-sm text-slate-400 mb-4">Sign in with your visitor or student account to view your tickets. Lost & Found requires approved student access.</p>
-            <button onClick={() => setIsAuthOpen(true)} className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold">Sign In</button>
-          </section>
-        )}
-
-        {activeTab === 'lostfound' && isSignedIn && !isStudent && (
-          <section className="glass-card rounded-2xl p-12 text-center border border-white/5">
-            <Shield className="w-10 h-10 mx-auto mb-3 text-indigo-400" />
-            <h2 className="text-xl font-bold mb-2">Lost & Found is for verified students</h2>
-            <p className="text-sm text-slate-400">Ask a campus admin to verify your student status. You can still book events and view your tickets.</p>
-          </section>
-        )}
-
-        {/* TAB 2: LOST & FOUND */}
-        {activeTab === 'lostfound' && isStudent && (
-          <section>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <Search className="w-6 h-6 text-purple-400" />
-                  Lost & Found AI Matching Gallery
-                </h2>
-                <p className="text-xs text-slate-400">Photos analyzed by AWS Rekognition & auto-matched via DynamoDB Streams</p>
-              </div>
-
-              {/* Filters */}
-              <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-white/5 self-start text-xs font-medium">
-                {['all', 'lost', 'found', 'matched'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setItemFilter(tab)}
-                    className={`px-3 py-1.5 rounded-lg capitalize transition-all ${
-                      itemFilter === tab
-                        ? 'bg-purple-600 text-white shadow'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {loading && items.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {[1, 2, 3, 4].map((n) => (
-                  <div key={n} className="glass-card rounded-2xl h-80 animate-pulse bg-slate-900/40"></div>
-                ))}
-              </div>
-            ) : filteredItems.length === 0 ? (
-              <div className="glass-card rounded-2xl p-12 text-center text-slate-400 border border-white/5">
-                <Search className="w-12 h-12 mx-auto mb-3 text-slate-600" />
-                <h3 className="text-lg font-bold text-white mb-1">No items found</h3>
-                <p className="text-xs max-w-sm mx-auto mb-4">Be the first to report a lost or found item with a photo.</p>
-                <button
-                  onClick={openReport}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 text-white"
-                >
-                  Report Item
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredItems.map((item) => (
-                  <ItemCard key={item.itemId} item={item} />
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* TAB 3: MY BOOKINGS */}
-        {activeTab === 'bookings' && isSignedIn && (
-          <section className="max-w-4xl mx-auto">
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <Ticket className="w-6 h-6 text-cyan-400" />
-                Confirmed Tickets for {currentUser.name}
-              </h2>
-              <p className="text-xs text-slate-400">Queried via DynamoDB Global Secondary Index (userId-index)</p>
-            </div>
-
-            {bookings.length === 0 ? (
-              <div className="glass-card rounded-2xl p-12 text-center text-slate-400 border border-white/5">
-                <Ticket className="w-12 h-12 mx-auto mb-3 text-slate-600" />
-                <h3 className="text-lg font-bold text-white mb-1">No bookings yet</h3>
-                <p className="text-xs mb-4">You have not booked any event seats as {currentUser.email}.</p>
-                <button
-                  onClick={() => setActiveTab('events')}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white"
-                >
-                  Browse Campus Events
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {bookings.map((b) => (
-                  <div
-                    key={b.bookingId}
-                    className="glass-card glass-card-hover rounded-2xl p-5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          {b.status || 'CONFIRMED'}
-                        </span>
-                        <span className="text-xs text-slate-400 font-mono">
-                          ID: {b.bookingId.slice(0, 8)}...
-                        </span>
-                      </div>
-                      <h4 className="text-lg font-bold text-white">{b.eventTitle || 'Campus Event'}</h4>
-                      <p className="text-xs text-slate-400">Booked on: {new Date(b.bookingTime).toLocaleString()}</p>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-semibold">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        Valid Campus Pass
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
+        {activeTab === 'bookings' && <section className="nexus-service-page animate-fade-in">
+          <PageHeader Icon={Ticket} eyebrow="YOUR CAMPUS PASSES" title="My Bookings" description={isSignedIn?'Confirmed Tickets for '+currentUser.name:'Sign in with your visitor or student account to view your tickets.'}>
+            {isSignedIn && <button className="nexus-button-secondary" onClick={loadBookings}><RefreshCw size={16}/>Refresh tickets</button>}
+            <button className="nexus-button-primary" onClick={()=>setActiveTab('events')}>Browse Campus Events<ArrowRight size={18}/></button>
+          </PageHeader>
+          {!isSignedIn ? <AccessPanel Icon={Ticket} title="Sign in to My Bookings" description="Your reservations are linked to your signed-in account." onSignIn={()=>setIsAuthOpen(true)}/> :
+            <div className="nexus-bookings-layout"><aside className="nexus-bookings-summary"><Ticket size={32}/><h2>Your next<br/>campus moment.</h2><p>{currentUser.name}</p><span>{currentUser.email}</span><div className="nexus-booking-total"><strong>{bookings.length}</strong><span>Confirmed tickets</span></div></aside><div className="nexus-ticket-list"><p className="nexus-data-note">Queried via DynamoDB Global Secondary Index (userId-index)</p>
+              {!bookings.length ? <div className="nexus-empty-state"><Ticket size={44}/><h3>No bookings yet</h3><p>You have not booked any event seats as {currentUser.email}.</p><button className="nexus-button-primary" onClick={()=>setActiveTab('events')}>Browse Campus Events</button></div> : bookings.map(b=><BookingPass key={b.bookingId} booking={b}/>)}
+            </div></div>}
+        </section>}
+        <footer className="nexus-footer"><button onClick={()=>setActiveTab('home')}><Sparkles size={17}/>Nexus</button><span>Events & AI Lost and Found</span><span>AWS Serverless</span></footer>
       </main>
 
       {/* Floating AWS Architecture Badge */}
@@ -470,4 +277,8 @@ export default function App() {
       />
     </div>
   );
+}
+
+function AccessPanel({ Icon, title, description, onSignIn, onBrowse }) {
+  return <div className="nexus-access-panel"><div className="nexus-access-art"><Icon size={64} strokeWidth={1.25}/><span>Your campus. Connected.</span></div><div className="nexus-access-copy"><span className="nexus-eyebrow">ACCOUNT ACCESS</span><h2>{title}</h2><p>{description}</p>{onSignIn && <button className="nexus-button-primary" onClick={onSignIn}><LogIn size={17}/>Sign In</button>}{onBrowse && <button className="nexus-button-primary" onClick={onBrowse}>Browse Campus Events<ArrowRight size={17}/></button>}</div></div>;
 }

@@ -1,3 +1,4 @@
+import ModalShell from './ModalShell';
 import React, { useState } from 'react';
 import { X, Calendar, MapPin, Users, PlusCircle, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
@@ -48,29 +49,29 @@ export default function CreateEventModal({ isOpen, onClose, currentUser, onEvent
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="glass-card w-full max-w-lg rounded-2xl p-6 border border-white/10 shadow-2xl relative">
+    <ModalShell label="Campus organisers" title="Make something worth showing up for." description="Create an event and bring your campus together." className="nexus-dialog-createevent">
         
         {/* Close Button */}
         <button
+          aria-label="Close campus organisers"
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-5 right-5 text-muted hover:text-ink transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-2 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600/30 flex items-center justify-center text-indigo-400">
+          <div className="w-8 h-8 rounded-lg bg-accent/30 flex items-center justify-center text-accent-ink">
             <PlusCircle className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-white">Create Campus Event</h2>
-            <p className="text-xs text-slate-400">Admin-only route protected by Cognito group checks</p>
+            <h2 className="text-xl font-bold text-ink">Create Campus Event</h2>
+            <p className="text-xs text-muted">Admin-only route protected by Cognito group checks</p>
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-danger/15 border border-danger/25 text-danger text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -78,63 +79,63 @@ export default function CreateEventModal({ isOpen, onClose, currentUser, onEvent
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Event Title *</label>
+            <label className="block text-xs font-semibold text-muted mb-1">Event Title *</label>
             <input
               type="text"
               placeholder="e.g. AWS Cloud Hackathon 2026"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-soft border border-line rounded-xl px-3.5 py-2 text-sm text-ink placeholder-muted focus:outline-none focus:border-accent-ink/25"
               required
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Date & Time *</label>
+              <label className="block text-xs font-semibold text-muted mb-1">Date & Time *</label>
               <input
                 type="datetime-local"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-soft border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent-ink/25"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-1">Total Seats *</label>
+              <label className="block text-xs font-semibold text-muted mb-1">Total Seats *</label>
               <input
                 type="number"
                 min="1"
                 max="5000"
                 value={totalSeats}
                 onChange={(e) => setTotalSeats(e.target.value)}
-                className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-soft border border-line rounded-xl px-3 py-2 text-xs text-ink focus:outline-none focus:border-accent-ink/25"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Venue / Location *</label>
+            <label className="block text-xs font-semibold text-muted mb-1">Venue / Location *</label>
             <input
               type="text"
               placeholder="e.g. Auditorium A, Tech Hall Room 302"
               value={venue}
               onChange={(e) => setVenue(e.target.value)}
-              className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+              className="w-full bg-soft border border-line rounded-xl px-3.5 py-2 text-sm text-ink placeholder-muted focus:outline-none focus:border-accent-ink/25"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">Description</label>
+            <label className="block text-xs font-semibold text-muted mb-1">Description</label>
             <textarea
               rows="3"
               placeholder="Brief details about the event, keynote speakers, requirements..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-slate-900/80 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full bg-soft border border-line rounded-xl px-3.5 py-2 text-sm text-ink placeholder-muted focus:outline-none focus:border-accent-ink/25 resize-none"
             ></textarea>
           </div>
 
@@ -142,10 +143,10 @@ export default function CreateEventModal({ isOpen, onClose, currentUser, onEvent
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-accent   hover:bg-accent-hover hover:bg-accent-hover text-ink shadow-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (
-                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                <span className="inline-block w-4 h-4 border-2 border-line border-t-ink rounded-full animate-spin"></span>
               ) : (
                 <>
                   <PlusCircle className="w-4 h-4" />
@@ -155,7 +156,6 @@ export default function CreateEventModal({ isOpen, onClose, currentUser, onEvent
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </ModalShell>
   );
 }
