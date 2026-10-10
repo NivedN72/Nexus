@@ -12,7 +12,7 @@ import { api } from './services/api';
 import { cognitoService } from './services/cognito';
 import { 
   Sparkles, Calendar, PlusCircle, Search, RefreshCw, Ticket, 
-  AlertCircle, CheckCircle2, Shield, Info, ArrowRight, LogIn 
+  AlertCircle, CheckCircle2, Shield, Info, ArrowRight, LogIn, X 
 } from 'lucide-react';
 
 export default function App() {
@@ -21,6 +21,7 @@ export default function App() {
   
   // Data State
   const [events, setEvents] = useState([]);
+  const [eventSearch, setEventSearch] = useState('');
   const [items, setItems] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [itemFilter, setItemFilter] = useState('all'); // all, lost, found, matched
@@ -134,6 +135,16 @@ export default function App() {
     if (!isSignedIn) setIsAuthOpen(true);
   };
 
+  const filteredEvents = events.filter((e) => {
+    if (!eventSearch.trim()) return true;
+    const q = eventSearch.toLowerCase().trim();
+    return (
+      (e.title && e.title.toLowerCase().includes(q)) ||
+      (e.venue && e.venue.toLowerCase().includes(q)) ||
+      (e.description && e.description.toLowerCase().includes(q))
+    );
+  });
+
   const filteredItems = items.filter((item) => {
     if (itemFilter === 'lost') return item.type === 'lost';
     if (itemFilter === 'found') return item.type === 'found';
@@ -230,7 +241,7 @@ export default function App() {
         {/* TAB 1: CAMPUS EVENTS */}
         {activeTab === 'events' && (
           <section>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <Calendar className="w-6 h-6 text-indigo-400" />
@@ -239,15 +250,39 @@ export default function App() {
                 <p className="text-xs text-slate-400">Publicly visible &bull; Live seat counter with DynamoDB race-condition protection</p>
               </div>
 
-              {isAdmin && (
-                <button
-                  onClick={() => setIsCreateEventOpen(true)}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/30 transition-all"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  Add Event
-                </button>
-              )}
+              <div className="flex items-center gap-3">
+                {/* Search Bar */}
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={eventSearch}
+                    onChange={(e) => setEventSearch(e.target.value)}
+                    placeholder="Search events, venues…"
+                    aria-label="Search events"
+                    className="w-full bg-slate-900/80 border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  />
+                  {eventSearch && (
+                    <button
+                      onClick={() => setEventSearch('')}
+                      aria-label="Clear search"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsCreateEventOpen(true)}
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30 transition-all duration-150 ease-out active:scale-[0.96] shrink-0"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    Add Event
+                  </button>
+                )}
+              </div>
             </div>
 
             {loading && events.length === 0 ? (
@@ -267,9 +302,21 @@ export default function App() {
                   </button>
                 )}
               </div>
+            ) : filteredEvents.length === 0 ? (
+              <div className="glass-card rounded-2xl p-10 text-center text-slate-400 border border-white/5">
+                <Search className="w-10 h-10 mx-auto mb-2 text-slate-600" />
+                <h3 className="text-base font-bold text-white mb-1">No events match "{eventSearch}"</h3>
+                <p className="text-xs max-w-xs mx-auto mb-4">Try searching with a different keyword or clear your search.</p>
+                <button
+                  onClick={() => setEventSearch('')}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-800 text-slate-200 hover:text-white border border-white/10"
+                >
+                  Clear search
+                </button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((event) => (
+                {filteredEvents.map((event) => (
                   <EventCard
                     key={event.eventId}
                     event={event}

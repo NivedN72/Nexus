@@ -75,10 +75,10 @@ export default function EventCard({ event, onBook, bookingLoading, canBook = tru
         {/* Progress Bar */}
         <div>
           <div className="flex justify-between items-center text-xs font-medium mb-1.5">
-            <span className="text-slate-400 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" /> Booked Capacity
+            <span className="text-slate-400 flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-slate-400" /> Booked Capacity
             </span>
-            <span className="text-slate-200 font-mono">
+            <span className="text-slate-200 font-mono tabular-nums text-xs">
               {booked} / {total} ({percentage}%)
             </span>
           </div>
@@ -101,10 +101,10 @@ export default function EventCard({ event, onBook, bookingLoading, canBook = tru
           <button
             onClick={() => onBook(event)}
             disabled={isSoldOut || bookingLoading}
-            className={`w-full py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all shadow-lg ${
+            className={`w-full py-2.5 px-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-150 ease-out shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
               isSoldOut
                 ? 'bg-slate-800/50 text-slate-500 cursor-not-allowed border border-white/5'
-                : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-indigo-600/25 active:scale-[0.98]'
+                : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-indigo-600/25 active:scale-[0.96]'
             }`}
           >
             {bookingLoading ? (
@@ -121,7 +121,7 @@ export default function EventCard({ event, onBook, bookingLoading, canBook = tru
 
         {/* Cloud Computing Note */}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           <span>Atomic Conditional Write (Race-Condition Free)</span>
         </div>
       </div>

@@ -34,7 +34,7 @@ export default function ItemCard({ item }) {
             <img
               src={imageUrl}
               alt={item.title}
-              className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+              className="w-full h-full object-cover transition-transform duration-500 hover:scale-105 ring-1 ring-inset ring-white/10"
               onError={() => setFailedImageUrl(imageUrl)}
             />
           ) : null}
