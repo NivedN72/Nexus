@@ -12,7 +12,8 @@ import { api } from './services/api';
 import { cognitoService } from './services/cognito';
 import { 
   Sparkles, Calendar, PlusCircle, Search, RefreshCw, Ticket, 
-  AlertCircle, CheckCircle2, Shield, Info, ArrowRight, LogIn, X 
+  AlertCircle, CheckCircle2, Shield, Info, ArrowRight, LogIn, X,
+  MapPin, Users, Clock
 } from 'lucide-react';
 
 export default function App() {
@@ -135,6 +136,8 @@ export default function App() {
     if (!isSignedIn) setIsAuthOpen(true);
   };
 
+  const featuredEvent = events[0] || null;
+
   const filteredEvents = events.filter((e) => {
     if (!eventSearch.trim()) return true;
     const q = eventSearch.toLowerCase().trim();
@@ -188,55 +191,114 @@ export default function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Hero Banner */}
-        <div className="relative glass-card rounded-3xl p-6 sm:p-8 mb-8 border border-white/10 overflow-hidden shadow-2xl">
-          <div className="absolute -top-24 -right-24 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-cyan-600/15 rounded-full blur-3xl pointer-events-none"></div>
+        {/* DIRECTION 3: CINEMATIC SPOTLIGHT COVER HERO */}
+        {featuredEvent ? (
+          <div className="relative rounded-3xl mb-10 overflow-hidden border border-white/10 shadow-2xl bg-slate-950 group">
+            {/* Ambient Lighting & Cyber Mesh Backdrop */}
+            <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-indigo-950/70 to-slate-900 pointer-events-none"></div>
+            <div className="absolute -top-32 -right-32 w-[30rem] h-[30rem] bg-indigo-500/20 rounded-full blur-3xl pointer-events-none group-hover:bg-indigo-500/30 transition-all duration-700"></div>
+            <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b0a_1px,transparent_1px),linear-gradient(to_bottom,#1e293b0a_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none"></div>
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-indigo-300 mb-3">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                Serverless Cloud Architecture on AWS Free Tier
+            {/* Cinematic Card Content */}
+            <div className="relative z-10 p-6 sm:p-10 lg:p-12 flex flex-col justify-between min-h-[360px] sm:min-h-[400px]">
+              {/* Top Meta Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm backdrop-blur-md">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                    Spotlight Event
+                  </span>
+                  <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/5 text-slate-300 border border-white/10">
+                    <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                    {new Date(featuredEvent.date || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', weekday: 'short' })}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono tabular-nums px-3 py-1 rounded-full bg-slate-900/90 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-md">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                    {Math.max(0, (Number(featuredEvent.totalSeats) || 0) - (Number(featuredEvent.seatsBooked) || 0))} Seats Available
+                  </span>
+                  <button
+                    onClick={loadData}
+                    title="Refresh from DynamoDB"
+                    className="p-2 rounded-xl bg-slate-900/60 hover:bg-white/10 border border-white/10 text-slate-300 transition-colors"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
-                Campus Events & AI-Assisted Lost & Found
-              </h1>
-              <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-                Atomic conditional seat bookings with DynamoDB & automatic computer vision item matching using AWS Rekognition and DynamoDB Streams.
-              </p>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={openReport}
-                className="px-4 py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-600/25 flex items-center gap-2 transition-all active:scale-[0.98]"
-              >
-                <Search className="w-4 h-4" />
-                Report Lost / Found
-              </button>
+              {/* Central Title & Details */}
+              <div className="max-w-3xl space-y-3 my-auto py-2">
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
+                  {featuredEvent.title}
+                </h1>
+                
+                <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-slate-300 pt-1">
+                  <span className="flex items-center gap-1.5 text-cyan-300 font-semibold">
+                    <MapPin className="w-4 h-4 text-cyan-400 shrink-0" />
+                    {featuredEvent.venue}
+                  </span>
+                  <span className="text-slate-600 hidden sm:inline">&bull;</span>
+                  <span className="flex items-center gap-1.5 text-slate-300">
+                    <Calendar className="w-4 h-4 text-indigo-400 shrink-0" />
+                    {new Date(featuredEvent.date || Date.now()).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
 
-              {isAdmin && (
-                <button
-                  onClick={() => setIsCreateEventOpen(true)}
-                  className="px-4 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 flex items-center gap-2 transition-all active:scale-[0.98]"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  Create Event (Admin)
-                </button>
-              )}
+                <p className="text-sm sm:text-base text-slate-300 line-clamp-2 max-w-2xl leading-relaxed pt-1">
+                  {featuredEvent.description || 'Join students and mentors for this premier campus event.'}
+                </p>
+              </div>
 
-              <button
-                onClick={loadData}
-                title="Refresh from DynamoDB"
-                className="p-2.5 rounded-xl bg-slate-900/60 hover:bg-white/10 border border-white/5 text-slate-300 transition-all"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
+              {/* Bottom Action & Social Proof Bar */}
+              <div className="pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-4">
+                {/* Attendee Avatars */}
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2 overflow-hidden">
+                    {['👩‍🎓', '👨‍🎓', '🚀', '⚡'].map((emoji, idx) => (
+                      <div key={idx} className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 border-2 border-slate-950 text-xs shadow">
+                        {emoji}
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-xs text-slate-400">
+                    <strong className="text-white font-semibold tabular-nums">{Number(featuredEvent.seatsBooked) || 0} registered</strong> · Capacity locked with DynamoDB
+                  </span>
+                </div>
+
+                {/* Primary Action Buttons */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleBookEvent(featuredEvent)}
+                    disabled={isAdmin}
+                    className="py-3 px-6 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-500 via-indigo-600 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-white shadow-xl shadow-indigo-600/30 flex items-center gap-2 transition-all duration-150 ease-out active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50"
+                  >
+                    <Ticket className="w-4 h-4" />
+                    <span>{isAdmin ? 'Admin View Only' : 'Reserve Your Seat Now'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={openReport}
+                    className="py-3 px-4 rounded-xl font-semibold text-xs bg-slate-900/80 hover:bg-white/10 text-slate-300 border border-white/10 flex items-center gap-2 transition-colors active:scale-[0.96]"
+                  >
+                    <Search className="w-3.5 h-3.5 text-purple-400" />
+                    <span>Lost & Found</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="relative glass-card rounded-3xl p-8 mb-8 border border-white/10 text-center">
+            <Sparkles className="w-8 h-8 mx-auto text-indigo-400 mb-2" />
+            <h1 className="text-2xl font-bold text-white mb-2">Campus Events & AI-Assisted Lost & Found</h1>
+            <p className="text-xs text-slate-400 max-w-md mx-auto">Explore upcoming campus events and recover lost items using AWS Rekognition.</p>
+          </div>
+        )}
 
         {/* TAB 1: CAMPUS EVENTS */}
         {activeTab === 'events' && (
