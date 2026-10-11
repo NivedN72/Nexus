@@ -28,12 +28,14 @@ export default function useNexusMotion(rootRef) {
       if (element.matches('.nexus-home-copy h1')) {
         subject = element.querySelectorAll('.nexus-title-word');
         Object.assign(options, { y: ['112%', '0%'], rotate: [5, 0], opacity: [1, 1], duration: 850, delay: (_, index) => 70 + index * 55, ease: 'outExpo' });
+      } else if (element.matches('.nexus-campus-photo') && element.closest('.nexus-home-hero--panorama')) {
+        Object.assign(options, { y: [0, 0], opacity: [1, 1], scale: [1.04, 1], duration: 1100, delay: 0, ease: 'outExpo' });
       } else if (element.matches('.nexus-campus-photo')) {
         Object.assign(options, { y: [0, 0], opacity: [1, 1], scale: [1.12, 1], clipPath: ['inset(12% 34% 12% 34% round 90px)', 'inset(0% 0% 0% 0% round 26px)'], duration: 1100, delay: 80, ease: 'outExpo' });
       } else if (element.matches('.nexus-hero-pass')) {
-        Object.assign(options, { x: [-70, 0], y: [65, 0], rotate: [-16, -5], scale: [0.9, 1], opacity: [0, 1], duration: 950, delay: 340, ease: 'outBack' });
+        Object.assign(options, { x: [-70, 0], y: [65, 0], rotate: [-12, -3], scale: [0.9, 1], opacity: [0, 1], duration: 950, delay: 340, ease: 'outBack' });
       } else if (element.matches('.nexus-hero-item')) {
-        Object.assign(options, { x: [45, 0], y: [-35, 0], rotate: [18, 5], scale: [0.9, 1], opacity: [0, 1], duration: 850, delay: 480, ease: 'outBack' });
+        Object.assign(options, { x: [45, 0], y: [-35, 0], rotate: [12, 3], scale: [0.9, 1], opacity: [0, 1], duration: 850, delay: 480, ease: 'outBack' });
       } else if (element.matches('.nexus-home-tab')) {
         Object.assign(options, { y: [0, 0], x: [18, 0], clipPath: ['inset(0% 100% 0% 0%)', 'inset(0% 0% 0% 0%)'], duration: 700, delay: delay + 180, ease: 'outExpo' });
       } else if (element.matches('.nexus-agenda-event')) {

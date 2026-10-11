@@ -7,6 +7,7 @@ import sys
 import threading
 import types
 import unittest
+from unittest.mock import patch, MagicMock
 
 ROOT = Path(__file__).resolve().parents[1] / "lambdas"
 class ClientError(Exception):
@@ -95,6 +96,67 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(result['statusCode'],201)
         ticket=json.loads(result['body'])['booking']
         self.assertEqual(ticket['userId'],'visitor'); self.assertEqual(ticket['userEmail'],'visitor@example.com')
+    def test_confirmation_email_follows_commit_and_uses_verified_recipient(self):
+        handler = load('bookEvent', self.aws)
+        self.aws.events['event'].update(title='Cloud <Workshop>', date='2026-11-15T10:00:00Z', venue='Hall & Lab')
+        mail = MagicMock()
+        sent = []
+        def capture(message):
+            self.assertEqual(len(self.aws.bookings), 1)
+            sent.append(message)
+        mail.send_message.side_effect = capture
+        with patch.dict(handler.os.environ, {'SMTP_USER':'sender@example.com','SMTP_PASS':'test-only'}, clear=True), \
+                patch.object(handler.smtplib, 'SMTP_SSL') as smtp:
+            smtp.return_value.__enter__.return_value = mail
+            result = handler.lambda_handler(event(body={'eventId':'event','email':'other@example.com'}), None)
+            duplicate = handler.lambda_handler(event(), None)
+        body = json.loads(result['body'])
+        self.assertEqual(result['statusCode'], 201)
+        self.assertEqual(body['confirmationEmail']['status'], 'sent')
+        self.assertEqual(duplicate['statusCode'], 409)
+        self.assertEqual(len(sent), 1)
+        message = sent[0]
+        self.assertEqual(message['To'], 'visitor@example.com')
+        text = message.get_body(preferencelist=('plain',)).get_content()
+        for value in ('Cloud <Workshop>', 'Hall & Lab', '15 Nov 2026, 10:00 UTC', body['booking']['bookingId']):
+            self.assertIn(value, text)
+        html = message.get_body(preferencelist=('html',)).get_content()
+        self.assertIn('Cloud &lt;Workshop&gt;', html)
+        self.assertIn('Hall &amp; Lab', html)
+        self.assertNotIn('Cloud <Workshop>', html)
+
+    def test_email_failure_does_not_fail_or_rollback_booking(self):
+        handler = load('bookEvent', self.aws)
+        with patch.dict(handler.os.environ, {'SMTP_USER':'sender@example.com','SMTP_PASS':'test-only'}, clear=True), \
+                patch.object(handler.smtplib, 'SMTP_SSL', side_effect=TimeoutError):
+            result = handler.lambda_handler(event(), None)
+        self.assertEqual(result['statusCode'], 201)
+        self.assertEqual(json.loads(result['body'])['confirmationEmail']['status'], 'failed')
+        self.assertEqual(len(self.aws.bookings), 1)
+        self.assertEqual(self.aws.events['event']['seatsBooked'], 1)
+
+    def test_email_missing_configuration_and_short_timeout_skip_smtp(self):
+        for configured in (False, True):
+            aws = FakeAWS()
+            handler = load('bookEvent', aws)
+            variables = {'SMTP_USER':'sender@example.com','SMTP_PASS':'test-only'} if configured else {}
+            context = types.SimpleNamespace(get_remaining_time_in_millis=lambda: 3000)
+            with patch.dict(handler.os.environ, variables, clear=True), patch.object(handler.smtplib, 'SMTP_SSL') as smtp:
+                result = handler.lambda_handler(event(), context)
+            self.assertEqual(result['statusCode'], 201)
+            self.assertEqual(json.loads(result['body'])['confirmationEmail']['status'], 'unavailable')
+            smtp.assert_not_called()
+
+    def test_no_confirmation_email_for_rejected_or_sold_out_booking(self):
+        handler = load('bookEvent', self.aws)
+        self.aws.events['event']['totalSeats'] = 0
+        with patch.dict(handler.os.environ, {'SMTP_USER':'sender@example.com','SMTP_PASS':'test-only'}, clear=True), \
+                patch.object(handler.smtplib, 'SMTP_SSL') as smtp:
+            for request in (event(), event(groups=['admins']), {'body':'{}'}):
+                self.assertNotEqual(handler.lambda_handler(request, None)['statusCode'], 201)
+            smtp.assert_not_called()
+        self.assertEqual(self.aws.bookings, {})
+
     def test_admin_booking_rejected_before_database(self):
         handler = load('bookEvent', self.aws)
         for groups in (['admins'], ['admins', 'students'], '[admins]', '["students","admins"]', 'admins'):

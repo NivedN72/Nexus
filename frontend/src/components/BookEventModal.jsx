@@ -7,13 +7,14 @@ export default function BookEventModal({ isOpen, onClose, event, currentUser, on
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [booking, setBooking] = useState(null);
+  const [emailStatus, setEmailStatus] = useState(null);
   if (!isOpen || !event || !currentUser?.token) return null;
   const reserve = async () => {
     if (loading) return;
     setLoading(true); setError('');
     try {
       const result = await api.bookEvent(event.eventId, currentUser);
-      setBooking(result.booking); onBookingSuccess(result);
+      setBooking(result.booking); setEmailStatus(result.confirmationEmail?.status || null); onBookingSuccess(result);
     } catch (err) { setError(err.message || 'Could not reserve your seat.'); }
     finally { setLoading(false); }
   };
@@ -32,6 +33,9 @@ export default function BookEventModal({ isOpen, onClose, event, currentUser, on
               <p className="mt-3 text-xs font-mono break-all">Ticket: {booking.bookingId}</p>
             </div>
             <p className="text-xs text-muted">Your ticket is available in My Bookings.</p>
+            {emailStatus && <p role="status" className="text-xs text-muted">{emailStatus === 'sent'
+              ? `A confirmation email has been sent to ${booking.userEmail || currentUser.email}. Check your spam folder too.`
+              : 'Your seat is confirmed, but the confirmation email could not be sent. You can still access your ticket in My Bookings.'}</p>}
             <button onClick={onClose} className="w-full py-3 rounded-xl bg-soft font-semibold">Close</button>
           </div>
         ) : (

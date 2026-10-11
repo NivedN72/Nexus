@@ -3,7 +3,21 @@ export default {
   content: { relative: true, files: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'] },
   theme: {
     extend: {
-      colors: {"canvas": "#eef0f5", "surface": "#ffffff", "soft": "#f6f7f9", "ink": "#242426", "muted": "#5d6069", "line": "#dfe2e8", "accent": "#d1ff5f", "accent-hover": "#c1ef4f", "accent-ink": "#41581c", "success": "#24633c", "warning": "#795316", "danger": "#9b2a3b"},
+      colors: {
+        'canvas': 'rgb(var(--color-canvas) / <alpha-value>)',
+        'surface': 'rgb(var(--color-surface) / <alpha-value>)',
+        'soft': 'rgb(var(--color-soft) / <alpha-value>)',
+        'ink': 'rgb(var(--color-ink) / <alpha-value>)',
+        'muted': 'rgb(var(--color-muted) / <alpha-value>)',
+        'line': 'rgb(var(--color-line) / <alpha-value>)',
+        'accent': 'rgb(var(--color-accent) / <alpha-value>)',
+        'accent-hover': 'rgb(var(--color-accent-hover) / <alpha-value>)',
+        'accent-ink': 'rgb(var(--color-accent-ink) / <alpha-value>)',
+        'accent-text': 'rgb(var(--color-accent-text) / <alpha-value>)',
+        'success': 'rgb(var(--color-success) / <alpha-value>)',
+        'warning': 'rgb(var(--color-warning) / <alpha-value>)',
+        'danger': 'rgb(var(--color-danger) / <alpha-value>)',
+      },
       fontFamily: { sans: ['Inter Display', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
     },
   },

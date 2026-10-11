@@ -2,12 +2,21 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('nexus_theme');
+        document.documentElement.dataset.theme = savedTheme === 'light' || savedTheme === 'dark'
+          ? savedTheme : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch {
+        document.documentElement.dataset.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+    </script>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236366f1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='12 2 2 7 12 12 22 7 12 2'></polygon><polyline points='2 17 12 22 22 17'></polyline><polyline points='2 12 12 17 22 12'></polyline></svg>" />
     <link rel="preload" href="/fonts/InterDisplay-Regular.woff2" as="font" type="font/woff2" crossorigin>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nexus — Serverless Campus Platform on AWS</title>
+    <title>Nexus</title>
   </head>
-  <body class="bg-canvas text-ink font-sans antialiased selection:bg-accent selection:text-ink min-h-[100dvh]">
+  <body class="bg-canvas text-ink font-sans antialiased selection:bg-accent selection:text-accent-text min-h-[100dvh]">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

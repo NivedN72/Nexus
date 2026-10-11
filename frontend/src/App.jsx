@@ -5,6 +5,7 @@ import useInteractionMotion from './hooks/useInteractionMotion';
 import HomePage from './components/HomePage';
 import PageHeader from './components/PageHeader';
 import EventCard from './components/EventCard';
+import { sortEventsByDate } from './utils/events';
 import BookingPass from './components/BookingPass';
 import ItemCard from './components/ItemCard';
 import ReportItemModal from './components/ReportItemModal';
@@ -24,6 +25,18 @@ export default function App() {
   const motionRoot = useRef(null);
   useNexusMotion(motionRoot);
   useInteractionMotion(motionRoot);
+  const [theme, setTheme] = useState(() => {
+    if (document.documentElement.dataset.theme) return document.documentElement.dataset.theme;
+    try {
+      const stored = localStorage.getItem('nexus_theme');
+      if (stored === 'light' || stored === 'dark') return stored;
+    } catch { /* Theme still works when browser storage is unavailable. */ }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem('nexus_theme', theme); } catch { /* Keep the current session preference. */ }
+  }, [theme]);
   const [activeTab, setActiveTab] = useState('home');
   const [currentUser, setCurrentUser] = useState(() => cognitoService.restoreSession());
   
@@ -53,6 +66,9 @@ export default function App() {
 
   const dataRequest = useRef(0);
   const bookingRequest = useRef(0);
+  const bookingsLoaded = useRef(false);
+  const bookingsPending = useRef(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const isSignedIn = Boolean(currentUser?.token);
   const isStudent = isSignedIn && currentUser.isStudent;
   const isAdmin = isSignedIn && currentUser.role === 'admin';
@@ -62,6 +78,9 @@ export default function App() {
     else cognitoService.clearSession();
     dataRequest.current += 1;
     bookingRequest.current += 1;
+    bookingsLoaded.current = false;
+    bookingsPending.current = false;
+    setLoadingBookings(false);
     setItems([]);
     setBookings([]);
     setIsReportOpen(false);
@@ -96,14 +115,23 @@ export default function App() {
   };
 
   const loadBookings = async () => {
-    if (!isSignedIn) return;
+    if (!isSignedIn || bookingsPending.current) return;
     const request = ++bookingRequest.current;
-    setBookings([]);
+    bookingsPending.current = true;
+    setLoadingBookings(true);
     try {
       const data = await api.getMyBookings(currentUser);
-      if (request === bookingRequest.current) setBookings(data.bookings || []);
+      if (request === bookingRequest.current) {
+        setBookings(data.bookings || []);
+        bookingsLoaded.current = true;
+      }
     } catch (err) {
       if (request === bookingRequest.current) showToast(err.message, 'error');
+    } finally {
+      if (request === bookingRequest.current) {
+        bookingsPending.current = false;
+        setLoadingBookings(false);
+      }
     }
   };
 
@@ -112,9 +140,15 @@ export default function App() {
     return () => { dataRequest.current += 1; };
   }, [currentUser]);
 
+  // Preserve the cache across tabs, but never across sign-in sessions.
+  useEffect(() => () => {
+    bookingRequest.current += 1;
+    bookingsLoaded.current = false;
+    bookingsPending.current = false;
+  }, [currentUser]);
+
   useEffect(() => {
-    if (activeTab === 'bookings' && isSignedIn) loadBookings();
-    return () => { bookingRequest.current += 1; };
+    if (activeTab === 'bookings' && isSignedIn && !bookingsLoaded.current) loadBookings();
   }, [activeTab, currentUser]);
 
   const [selectedEventForBooking, setSelectedEventForBooking] = useState(null);
@@ -156,6 +190,8 @@ export default function App() {
       
       {/* Navbar */}
       <Navbar
+        theme={theme}
+        onToggleTheme={() => setTheme(previous => previous === 'dark' ? 'light' : 'dark')}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         currentUser={currentUser}
@@ -185,19 +221,19 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="flex-1 nexus-main max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24">
+      <main className={`flex-1 nexus-main max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-24${activeTab === 'home' ? ' nexus-main--home' : ''}`}>
         
-        {activeTab === 'home' && <HomePage events={events} loading={loading} navigate={setActiveTab} onBook={handleBookEvent} canBook={!isAdmin} />}
+        {activeTab === 'home' && <HomePage currentUser={currentUser} navigate={setActiveTab} onReport={openReport} />}
 
         {activeTab === 'events' && <section className="nexus-service-page">
           <PageHeader Icon={Calendar} eyebrow="OPEN TO EVERYONE" title="Campus Events" description="Publicly visible • Live seat counter with DynamoDB race-condition protection">
             {isAdmin && <button onClick={() => setIsCreateEventOpen(true)} className="nexus-button-primary"><PlusCircle size={18}/>Create Event (Admin)</button>}
             <button onClick={loadData} title="Refresh from DynamoDB" aria-label="Refresh events" className="nexus-button-secondary"><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button>
           </PageHeader>
-          <div className="nexus-section-strip"><h2>Upcoming Events</h2><span>{loading && !events.length ? 'Loading…' : events.length + (events.length===1?' event':' events')}</span></div>
+          <div className="nexus-section-strip"><h2>All Events</h2><span>{loading && !events.length ? 'Loading…' : events.length + (events.length===1?' event':' events')}</span></div>
           {loading && !events.length ? <div className="nexus-event-board">{[1,2,3].map(n=><div key={n} className="nexus-skeleton animate-pulse" />)}</div> : !events.length ?
             <div className="nexus-empty-state"><Calendar size={44}/><h3>No campus events found</h3><p>Check back soon for upcoming campus events.</p>{isAdmin && <button className="nexus-button-primary" onClick={()=>setIsCreateEventOpen(true)}>Create Event</button>}</div> :
-            <div className="nexus-event-board">{events.map(event=><EventCard key={event.eventId} event={event} onBook={handleBookEvent} canBook={!isAdmin} bookingLoading={bookingLoadingId===event.eventId} />)}</div>}
+            <div className="nexus-event-board">{sortEventsByDate(events).map(event=><EventCard key={event.eventId} event={event} onBook={handleBookEvent} canBook={!isAdmin} bookingLoading={bookingLoadingId===event.eventId} />)}</div>}
         </section>}
 
         {activeTab === 'lostfound' && <section className="nexus-service-page">
@@ -216,12 +252,12 @@ export default function App() {
 
         {activeTab === 'bookings' && <section className="nexus-service-page">
           <PageHeader Icon={Ticket} eyebrow="YOUR CAMPUS PASSES" title="My Bookings" description={isSignedIn?'Confirmed Tickets for '+currentUser.name:'Sign in with your visitor or student account to view your tickets.'}>
-            {isSignedIn && <button className="nexus-button-secondary" onClick={loadBookings}><RefreshCw size={16}/>Refresh tickets</button>}
+            {isSignedIn && <button className="nexus-button-secondary" onClick={loadBookings} disabled={loadingBookings}><RefreshCw size={16} className={loadingBookings ? 'animate-spin' : ''}/>{loadingBookings ? 'Loading tickets...' : 'Refresh tickets'}</button>}
             <button className="nexus-button-primary" onClick={()=>setActiveTab('events')}>Browse Campus Events<ArrowRight size={18}/></button>
           </PageHeader>
           {!isSignedIn ? <AccessPanel Icon={Ticket} title="Sign in to My Bookings" description="Your reservations are linked to your signed-in account." onSignIn={()=>setIsAuthOpen(true)}/> :
             <div className="nexus-bookings-layout"><aside className="nexus-bookings-summary"><Ticket size={32}/><h2>Your next<br/>campus moment.</h2><p>{currentUser.name}</p><span>{currentUser.email}</span><div className="nexus-booking-total"><strong>{bookings.length}</strong><span>Confirmed tickets</span></div></aside><div className="nexus-ticket-list"><p className="nexus-data-note">Queried via DynamoDB Global Secondary Index (userId-index)</p>
-              {!bookings.length ? <div className="nexus-empty-state"><Ticket size={44}/><h3>No bookings yet</h3><p>You have not booked any event seats as {currentUser.email}.</p><button className="nexus-button-primary" onClick={()=>setActiveTab('events')}>Browse Campus Events</button></div> : bookings.map(b=><BookingPass key={b.bookingId} booking={b}/>)}
+              {loadingBookings && !bookings.length ? <div className="nexus-empty-state" role="status"><RefreshCw size={32} className="animate-spin"/><p>Loading your tickets...</p></div> : !bookings.length ? <div className="nexus-empty-state"><Ticket size={44}/><h3>No bookings yet</h3><p>You have not booked any event seats as {currentUser.email}.</p><button className="nexus-button-primary" onClick={()=>setActiveTab('events')}>Browse Campus Events</button></div> : bookings.map(b=><BookingPass key={b.bookingId} booking={b} event={events.find(event => event.eventId === b.eventId)} loadingEvent={loading}/>)}
             </div></div>}
         </section>}
         <footer className="nexus-footer"><button onClick={()=>setActiveTab('home')}><Sparkles size={17}/>Nexus</button><span>Events & AI Lost and Found</span><span>AWS Serverless</span></footer>
@@ -270,6 +306,11 @@ export default function App() {
           currentUser={currentUser}
           onBookingSuccess={(res) => {
             loadData();
+            // A new reservation changes the cached list; fetch it on the next visit.
+            bookingRequest.current += 1;
+            bookingsPending.current = false;
+            bookingsLoaded.current = false;
+            setLoadingBookings(false);
             if (activeTab === 'bookings') loadBookings();
             showToast(`Reservation confirmed! Remaining seats: ${res.remainingSeats}`, 'success');
           }}

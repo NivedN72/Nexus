@@ -1,5 +1,10 @@
 import datetime
 import json
+import os
+import smtplib
+import ssl
+from email.message import EmailMessage
+from html import escape
 import uuid
 from decimal import Decimal
 import boto3
@@ -28,6 +33,65 @@ def response(status, body):
                     "Access-Control-Allow-Methods": "POST,OPTIONS"},
         "body": json.dumps(body, cls=DecimalEncoder)
     }
+
+def send_booking_confirmation(booking, event_item, context):
+    """Send only after the booking transaction commits; never roll back a ticket for email."""
+    sender = os.environ.get("SMTP_USER", "").strip()
+    password = os.environ.get("SMTP_PASS", "")
+    if not sender or not password:
+        print("Booking confirmation email unavailable: SMTP configuration missing")
+        return {"status": "unavailable"}
+    # Leave room to return the confirmed ticket if the mail server is slow.
+    if context and context.get_remaining_time_in_millis() < 15000:
+        print("Booking confirmation email unavailable: insufficient Lambda time remaining")
+        return {"status": "unavailable"}
+    try:
+        date = str(event_item.get("date") or "To be announced")
+        try:
+            parsed = datetime.datetime.fromisoformat(date.replace("Z", "+00:00"))
+            if parsed.tzinfo:
+                date = parsed.astimezone(datetime.timezone.utc).strftime("%d %b %Y, %H:%M UTC")
+        except ValueError:
+            pass
+        details = [
+            ("Event", booking["eventTitle"]),
+            ("Date and time", date),
+            ("Venue", str(event_item.get("venue") or "To be announced")),
+            ("Attendee", booking["attendeeName"]),
+            ("Booking ID", booking["bookingId"]),
+            ("Status", "Confirmed"),
+        ]
+        message = EmailMessage()
+        message["From"] = sender
+        message["To"] = booking["userEmail"]
+        message["Subject"] = "Your Nexus booking is confirmed"
+        message.set_content("Your seat is confirmed.\n\n" + "\n".join(
+            f"{label}: {value}" for label, value in details
+        ) + "\n\nYour ticket is also available in My Bookings. No verification code is needed.")
+        rows = "".join(
+            f'<tr><td style="padding:10px 12px;color:#50565d;vertical-align:top">{escape(label)}</td>'
+            f'<td style="padding:10px 12px;overflow-wrap:anywhere">{escape(str(value))}</td></tr>'
+            for label, value in details
+        )
+        message.add_alternative(
+            '<!doctype html><html><body style="margin:0;background:#eef0f5;color:#242426;font-family:Arial,sans-serif">'
+            '<div style="max-width:580px;margin:32px auto;background:#fff;padding:32px;border-radius:16px">'
+            '<span style="background:#d1ff5f;padding:8px 12px;border-radius:8px;font-weight:bold">Nexus</span>'
+            '<h1 style="font-size:28px;margin-top:28px">Your seat is confirmed.</h1>'
+            '<p>Here are the details of your campus booking.</p>'
+            f'<table style="width:100%;border-collapse:collapse;font-size:14px">{rows}</table>'
+            '<p style="font-size:14px;margin-top:24px">Your ticket is also available in My Bookings. '
+            'No verification code is needed.</p></div></body></html>', subtype="html"
+        )
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=3, context=ssl.create_default_context()) as server:
+            server.login(sender, password)
+            server.send_message(message)
+        return {"status": "sent"}
+    except Exception as error:
+        # Do not log passwords, recipient addresses, or mail server responses.
+        print("Booking confirmation email failed:", type(error).__name__)
+        return {"status": "failed"}
+
 
 def legacy_booking_exists(event_id, identities):
     # Preserve tickets from the previous UUID/email-based flow.
@@ -102,7 +166,9 @@ def lambda_handler(event, context):
             remaining = max(0, int(latest.get("totalSeats", 0)) - int(latest.get("seatsBooked", 0)))
         except Exception:
             remaining = max(0, int(event_item.get("totalSeats", 0)) - int(event_item.get("seatsBooked", 0)) - 1)
-        return response(201, {"message": "Seat reserved", "booking": booking, "remainingSeats": remaining})
+        confirmation_email = send_booking_confirmation(booking, event_item, context)
+        return response(201, {"message": "Seat reserved", "booking": booking, "remainingSeats": remaining,
+                              "confirmationEmail": confirmation_email})
     except (json.JSONDecodeError, TypeError):
         return response(400, {"error": "Invalid request body"})
     except ClientError as error:

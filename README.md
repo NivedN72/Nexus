@@ -236,6 +236,12 @@ Keep the photo bucket private. Allow the frontend origin to upload through S3 CO
 
 `onImageUpload.py` reads JPEG and PNG files, requests up to 10 Rekognition labels with a minimum confidence of 70%, and writes lowercase tags to the item record.
 
+Booking confirmation emails are sent after the seat and ticket are saved successfully. The email includes the event, date and time in UTC, venue, attendee, and booking ID. It does not ask for another verification code.
+
+To enable this on the booking Lambda, set `SMTP_USER` to the Gmail sender address and `SMTP_PASS` to its app password using Lambda environment variables. Never put the password in source files or Git. The sender needs a Gmail account with app passwords enabled. Set the Lambda timeout to 30 seconds so the booking can return safely if the mail server is slow. A function with less than 15 seconds remaining skips sending the email. The current SMTP connection uses Gmail over TLS on port 465.
+
+Email is best effort. Missing configuration or a mail failure does not cancel the reservation, and the ticket remains in My Bookings. The booking screen reports whether the email was sent. There is no automatic email retry yet. Deployment and sender setup are required before this feature works on AWS.
+
 `matchItems.py` processes DynamoDB Stream records and compares open reports. Set its `SNS_TOPIC_ARN` environment variable to enable notifications, and confirm the topic's email subscriptions. Messages go to the configured topic subscribers, not automatically to every reporter's email address.
 
 `reportItem.py` and `getItems.py` support the `S3_BUCKET_NAME` environment variable. Table names and several region settings are fixed in the handlers and must be updated if deploying under different names or in another region.
