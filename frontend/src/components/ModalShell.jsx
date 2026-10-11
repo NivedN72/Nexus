@@ -30,7 +30,7 @@ export default function ModalShell({ children, label, title, description, classN
       if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
     };
   }, []);
-  return <div className="nexus-dialog-backdrop animate-fade-in">
+  return <div className="nexus-dialog-backdrop">
     <section ref={dialogRef} className={`nexus-dialog ${className}`} role="dialog" aria-modal="true" aria-label={label}>
       <aside className="nexus-dialog-aside">
         <div className="nexus-dialog-brand"><span><Sparkles size={20} /></span>Nexus</div>

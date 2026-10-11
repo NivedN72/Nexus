@@ -45,7 +45,7 @@ export default function AwsArchitectureBadge() {
 
         {/* Expanded Details */}
         {expanded && (
-          <div className="p-4 pt-1 border-t border-line space-y-2 text-xs">
+          <div data-motion="cloud-details" className="p-4 pt-1 border-t border-line space-y-2 text-xs">
             <p className="text-[11px] text-muted mb-2">
               Every action in this UI directly invokes your live serverless cloud infrastructure on AWS:
             </p>

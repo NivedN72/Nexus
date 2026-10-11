@@ -29,10 +29,9 @@ h1,h2,h3,h4 { text-wrap:balance; }
 .nexus-brand { display:flex; align-items:center; gap:12px; background:transparent; border:0; text-align:left; flex-shrink:0; font-size:23px; font-weight:700; letter-spacing:-.05em; }
 .nexus-brand small { display:block; font-size:10px; font-weight:400; letter-spacing:0; color:var(--muted); margin-top:2px; }
 .nexus-brand-mark { display:grid; place-items:center; width:42px; height:42px; background:var(--lime); color:var(--ink); border-radius:12px; }
-.nexus-nav-links { display:flex; gap:26px; }
+.nexus-nav-links { position:relative; display:flex; gap:26px; }
 .nexus-nav-links button { position:relative; padding:12px 0; font-size:14px; font-weight:500; color:var(--muted); background:transparent; border:0; }
 .nexus-nav-links button:hover,.nexus-nav-links .is-active { color:var(--ink); }
-.nexus-nav-links .is-active::after { content:''; position:absolute; height:3px; background:#a4c744; left:0; right:0; bottom:0; border-radius:3px; }
 .nexus-nav-account { display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .nexus-sign-in { display:flex; align-items:center; gap:8px; background:var(--ink); color:#fff; padding:11px 16px; border-radius:10px; font-size:12px; font-weight:600; }
 .nexus-sign-in:hover { background:#41581c; }
@@ -80,8 +79,6 @@ h1,h2,h3,h4 { text-wrap:balance; }
 .nexus-home-tab-description { font-size:12px; line-height:1.6; color:var(--muted); max-width:330px; }
 .nexus-home-tab:hover strong { color:#41581c; }
 .nexus-home-tab:hover .nexus-home-tab-arrow { transform:translate(2px,-2px); }
-@keyframes nexus-home-arrive { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-.nexus-home-hero { animation:nexus-home-arrive 400ms ease-out both; }
 .nexus-service-page { padding-top:12px; min-height:60dvh; }
 .nexus-page-header { display:flex; justify-content:space-between; align-items:flex-end; gap:32px; padding:24px 0 40px; border-bottom:1px solid #cfd4dd; margin-bottom:28px; }
 .nexus-page-eyebrow { text-transform:lowercase; display:flex; align-items:center; gap:10px; margin-bottom:18px; font-size:10px; font-weight:600; letter-spacing:.1em; color:var(--muted); }
@@ -361,3 +358,90 @@ h1,h2,h3,h4 { text-wrap:balance; }
   *,*::before,*::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
   .glass-card-hover:hover,.nexus-home-tab:hover .nexus-home-tab-arrow,.nexus-item-report:hover .nexus-item-photo img,.nexus-primary-action:hover .nexus-action-icon { transform:none; }
 }
+
+/* Small responses to interaction; one shared cadence across the utility pages. */
+.nexus-nav-indicator { position:absolute; left:0; bottom:0; width:0; height:3px; border-radius:3px; background:#a4c744; pointer-events:none; }
+.nexus-mobile-nav button { transition:background 180ms ease,color 180ms ease; }
+.nexus-home-tab { position:relative; }
+.nexus-home-tab::after { content:''; position:absolute; left:28px; right:28px; bottom:-23px; height:2px; background:#647b45; transform:scaleX(0); transform-origin:left; transition:transform 240ms ease; }
+.nexus-home-tab:first-child::after { left:0; }
+.nexus-home-tab:last-child::after { right:0; }
+.nexus-home-tab:hover::after,.nexus-home-tab:focus-visible::after { transform:scaleX(1); }
+.nexus-button-primary,.nexus-button-secondary,.nexus-agenda-book,.nexus-sign-in { transition:background 180ms ease,transform 180ms ease; }
+.nexus-button-primary:active,.nexus-button-secondary:active,.nexus-agenda-book:not(:disabled):active,.nexus-sign-in:active { transform:scale(.98); }
+.nexus-gallery-sidebar nav button { transition:background 180ms ease,color 180ms ease; }
+.nexus-item-photo { transition:box-shadow 220ms ease; }
+.nexus-item-report:hover .nexus-item-photo { box-shadow:0 8px 22px -16px #41513a66; }
+.nexus-dialog-main input,.nexus-dialog-main textarea { transition:border-color 180ms ease,background 180ms ease; }
+@media (max-width:767px) { .nexus-home-tab::after,.nexus-home-tab:first-child::after,.nexus-home-tab:last-child::after { left:0; right:0; bottom:-1px; } }
+@media (prefers-reduced-motion:reduce) {
+  .nexus-home-tab:hover .nexus-home-tab-arrow,
+  .nexus-button-primary:active,.nexus-button-secondary:active,.nexus-agenda-book:not(:disabled):active,.nexus-sign-in:active { transform:none; }
+}
+
+/* Editorial motion: masked type, dimensional campus layers, purposeful feedback. */
+.nexus-word-mask { display:inline-block; overflow:hidden; vertical-align:bottom; padding-bottom:.13em; margin-bottom:-.13em; }
+.nexus-title-word { display:inline-block; transform-origin:0 100%; }
+.nexus-campus-composition { perspective:1200px; --depth-x:0; --depth-y:0; }
+.nexus-campus-plane { position:relative; transform:rotateX(calc(var(--depth-y) * -2deg)) rotateY(calc(var(--depth-x) * 3deg)); transition:transform 650ms cubic-bezier(.2,.8,.2,1); }
+.nexus-hero-pass { translate:calc(var(--depth-x) * -14px) calc(var(--depth-y) * -10px); transition:translate 650ms cubic-bezier(.2,.8,.2,1),box-shadow 650ms ease; }
+.nexus-hero-item { translate:calc(var(--depth-x) * 18px) calc(var(--depth-y) * 12px); transition:translate 650ms cubic-bezier(.2,.8,.2,1); }
+.nexus-campus-composition:hover .nexus-hero-pass { box-shadow:0 24px 44px -12px #25322835; }
+.nexus-home-tab { isolation:isolate; }
+.nexus-home-tab::before { content:''; position:absolute; inset:-12px 12px; background:var(--sage); border-radius:12px; z-index:-1; opacity:0; clip-path:inset(0 100% 0 0 round 12px); transition:clip-path 450ms cubic-bezier(.2,.8,.2,1),opacity 250ms ease; }
+.nexus-home-tab:first-child::before { left:-12px; }
+.nexus-home-tab:last-child::before { right:-12px; }
+.nexus-home-tab:hover::before,.nexus-home-tab:focus-visible::before { opacity:.65; clip-path:inset(0 0 0 0 round 12px); }
+.nexus-home-tab-top > svg:first-child { transition:transform 450ms cubic-bezier(.2,.8,.2,1); }
+.nexus-home-tab:hover .nexus-home-tab-top > svg:first-child { transform:rotate(-12deg) scale(1.12); }
+.nexus-agenda-event { transition:background 220ms ease; }
+.nexus-agenda-event:hover { background:#dce4d32b; }
+.nexus-dialog-aside { animation:nexus-panel-reveal 550ms cubic-bezier(.2,.8,.2,1) both; }
+.nexus-dialog-story { animation:nexus-story-reveal 650ms 100ms cubic-bezier(.2,.8,.2,1) both; }
+[data-motion="confirmation"] > div:first-child > p:first-child { animation:nexus-pass-stamp 650ms 100ms cubic-bezier(.2,.8,.2,1) both; transform-origin:25% 50%; }
+@keyframes nexus-panel-reveal { from { clip-path:inset(0 100% 0 0); } to { clip-path:inset(0 0 0 0); } }
+@keyframes nexus-story-reveal { from { opacity:0; transform:translateX(-20px); } to { opacity:1; transform:translateX(0); } }
+@keyframes nexus-pass-stamp { 0% { opacity:0; transform:scale(1.25) rotate(-8deg); } 65% { opacity:1; transform:scale(.98) rotate(1deg); } 100% { opacity:1; transform:scale(1) rotate(0deg); } }
+@media (max-width:767px),(hover:none),(prefers-reduced-motion:reduce) {
+  .nexus-campus-plane { transform:none; }
+  .nexus-hero-pass,.nexus-hero-item { translate:none; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .nexus-dialog-aside,.nexus-dialog-story,[data-motion="confirmation"] > div:first-child > p:first-child { animation:none; }
+  .nexus-home-tab:hover .nexus-home-tab-top > svg:first-child { transform:none; }
+}
+
+/* Motion while browsing: text stays stable, physical surfaces respond to intent. */
+@media (hover:hover) and (pointer:fine) and (min-width:768px) and (prefers-reduced-motion:no-preference) {
+  .nexus-agenda-date { transition:transform 380ms cubic-bezier(.2,.8,.2,1),background 380ms ease,box-shadow 380ms ease; }
+  .nexus-agenda-event:hover .nexus-agenda-date { transform:translateY(-5px) rotate(calc(-2deg + var(--surface-x,0) * 2deg)); background:var(--lime); box-shadow:0 12px 24px -18px #25322880; }
+  .nexus-agenda-copy h3 { transition:translate 350ms cubic-bezier(.2,.8,.2,1),color 350ms ease; }
+  .nexus-agenda-event:hover .nexus-agenda-copy h3 { translate:5px 0; color:#41581c; }
+  .nexus-agenda-book svg,.nexus-button-primary svg,.nexus-button-secondary svg,.nexus-sign-in svg { transition:translate 300ms cubic-bezier(.2,.8,.2,1); }
+  .nexus-agenda-book:not(:disabled):hover svg:last-child,.nexus-button-primary:not(:disabled):hover svg,.nexus-button-secondary:not(:disabled):hover svg,.nexus-sign-in:hover svg { translate:3px -2px; }
+  .nexus-item-photo { transform:perspective(900px) rotateX(calc(var(--surface-y,0) * -2deg)) rotateY(calc(var(--surface-x,0) * 3deg)); transition:transform 420ms cubic-bezier(.2,.8,.2,1),box-shadow 420ms ease; }
+  .nexus-item-photo img { transform:scale(1.08); object-position:calc(50% + var(--surface-x,0) * 4%) calc(50% + var(--surface-y,0) * 4%); transition:transform 650ms cubic-bezier(.2,.8,.2,1),object-position 420ms ease; }
+  .nexus-item-report:hover .nexus-item-photo img { transform:scale(1.14); }
+  .nexus-item-photo::after { content:''; position:absolute; inset:0; pointer-events:none; opacity:0; background:radial-gradient(ellipse at var(--highlight-x,50%) var(--highlight-y,50%),#ffffff35,transparent 65%); transition:opacity 350ms ease; }
+  .nexus-item-photo:hover::after { opacity:1; }
+  .nexus-item-placeholder > svg { transition:transform 420ms cubic-bezier(.2,.8,.2,1); }
+  .nexus-item-photo:hover .nexus-item-placeholder > svg { transform:translate(calc(var(--surface-x,0) * 6px),calc(var(--surface-y,0) * 6px)) rotate(-5deg); }
+  .nexus-admission-pass { transform:perspective(1000px) rotateX(calc(var(--surface-y,0) * -2deg)) rotateY(calc(var(--surface-x,0) * 2deg)); transition:transform 450ms cubic-bezier(.2,.8,.2,1),box-shadow 450ms ease,border-color 450ms ease; }
+  .nexus-admission-pass:hover { border-color:#9bb480; box-shadow:0 18px 40px -26px #31422170; }
+  .nexus-admission-pass::after { content:''; position:absolute; inset:0; pointer-events:none; opacity:0; background:radial-gradient(ellipse at var(--highlight-x,50%) var(--highlight-y,50%),#d1ff5f24,transparent 60%); transition:opacity 350ms ease; }
+  .nexus-admission-pass:hover::after { opacity:1; }
+  .nexus-ticket-stripes { transition:translate 450ms cubic-bezier(.2,.8,.2,1); }
+  .nexus-admission-pass:hover .nexus-ticket-stripes { translate:calc(var(--surface-x,0) * 5px) 0; }
+  .nexus-home-tab-arrow { translate:calc(var(--surface-x,0) * 5px) calc(var(--surface-y,0) * 4px); transition:translate 350ms cubic-bezier(.2,.8,.2,1),transform 350ms ease; }
+}
+/* Native view timelines scrub with scrolling and reverse when scrolling back. */
+@supports (animation-timeline:view()) {
+  @media (min-width:768px) and (prefers-reduced-motion:no-preference) {
+    .nexus-campus-plane { animation:nexus-campus-scroll linear both; animation-timeline:view(); animation-range:exit 0% exit 100%; }
+    .nexus-item-photo img { animation:nexus-photo-scroll linear both; animation-timeline:view(); animation-range:cover 0% cover 100%; scale:1.08; }
+    .nexus-home-tabs { animation:nexus-tabs-scroll linear both; animation-timeline:view(); animation-range:entry 0% entry 100%; }
+  }
+}
+@keyframes nexus-campus-scroll { from { translate:0 0; } to { translate:0 -55px; } }
+@keyframes nexus-photo-scroll { from { translate:0 12px; } to { translate:0 -12px; } }
+@keyframes nexus-tabs-scroll { from { translate:0 28px; } to { translate:0 0; } }

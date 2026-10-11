@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
+import useNexusMotion from './hooks/useNexusMotion';
+import useInteractionMotion from './hooks/useInteractionMotion';
 import HomePage from './components/HomePage';
 import PageHeader from './components/PageHeader';
 import EventCard from './components/EventCard';
@@ -19,6 +21,9 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  const motionRoot = useRef(null);
+  useNexusMotion(motionRoot);
+  useInteractionMotion(motionRoot);
   const [activeTab, setActiveTab] = useState('home');
   const [currentUser, setCurrentUser] = useState(() => cognitoService.restoreSession());
   
@@ -147,7 +152,7 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-canvas text-ink">
+    <div ref={motionRoot} className="min-h-[100dvh] flex flex-col bg-canvas text-ink">
       
       {/* Navbar */}
       <Navbar
@@ -161,7 +166,7 @@ export default function App() {
 
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed top-20 right-4 z-50 max-w-[calc(100vw-32px)] animate-fade-in">
+        <div data-motion="notice" className="fixed top-20 right-4 z-50 max-w-[calc(100vw-32px)]">
           <div
             className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-sm text-xs font-semibold backdrop-blur-xl border ${
               toast.type === 'error'
@@ -184,7 +189,7 @@ export default function App() {
         
         {activeTab === 'home' && <HomePage events={events} loading={loading} navigate={setActiveTab} onBook={handleBookEvent} canBook={!isAdmin} />}
 
-        {activeTab === 'events' && <section className="nexus-service-page animate-fade-in">
+        {activeTab === 'events' && <section className="nexus-service-page">
           <PageHeader Icon={Calendar} eyebrow="OPEN TO EVERYONE" title="Campus Events" description="Publicly visible • Live seat counter with DynamoDB race-condition protection">
             {isAdmin && <button onClick={() => setIsCreateEventOpen(true)} className="nexus-button-primary"><PlusCircle size={18}/>Create Event (Admin)</button>}
             <button onClick={loadData} title="Refresh from DynamoDB" aria-label="Refresh events" className="nexus-button-secondary"><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button>
@@ -195,7 +200,7 @@ export default function App() {
             <div className="nexus-event-board">{events.map(event=><EventCard key={event.eventId} event={event} onBook={handleBookEvent} canBook={!isAdmin} bookingLoading={bookingLoadingId===event.eventId} />)}</div>}
         </section>}
 
-        {activeTab === 'lostfound' && <section className="nexus-service-page animate-fade-in">
+        {activeTab === 'lostfound' && <section className="nexus-service-page">
           <PageHeader Icon={Search} eyebrow="STUDENT COMMUNITY" title="Lost & Found" description="Photos analyzed by AWS Rekognition & auto-matched via DynamoDB Streams">
             {isStudent && <><button onClick={openReport} className="nexus-button-primary"><PlusCircle size={18}/>Report Lost / Found</button><button onClick={loadData} aria-label="Refresh items" className="nexus-button-secondary"><RefreshCw size={16} className={loading?'animate-spin':''}/>Refresh</button></>}
           </PageHeader>
@@ -209,7 +214,7 @@ export default function App() {
             </div>}
         </section>}
 
-        {activeTab === 'bookings' && <section className="nexus-service-page animate-fade-in">
+        {activeTab === 'bookings' && <section className="nexus-service-page">
           <PageHeader Icon={Ticket} eyebrow="YOUR CAMPUS PASSES" title="My Bookings" description={isSignedIn?'Confirmed Tickets for '+currentUser.name:'Sign in with your visitor or student account to view your tickets.'}>
             {isSignedIn && <button className="nexus-button-secondary" onClick={loadBookings}><RefreshCw size={16}/>Refresh tickets</button>}
             <button className="nexus-button-primary" onClick={()=>setActiveTab('events')}>Browse Campus Events<ArrowRight size={18}/></button>

@@ -24,7 +24,7 @@ export default function BookEventModal({ isOpen, onClose, event, currentUser, on
         <p className="text-sm text-ink mb-5">{event.title} · {event.venue}</p>
         {error && <div role="alert" className="mb-4 p-3 rounded-xl bg-danger/15 text-danger flex gap-2"><AlertCircle className="w-5 h-5 shrink-0" />{error}</div>}
         {booking ? (
-          <div className="space-y-4">
+          <div data-motion="confirmation" className="space-y-4">
             <div className="rounded-2xl p-5 border border-success/25 bg-soft">
               <p className="text-success font-bold flex gap-2"><CheckCircle2 className="w-5 h-5" />Valid Campus Pass</p>
               <p className="mt-3">{booking.attendeeName}</p>

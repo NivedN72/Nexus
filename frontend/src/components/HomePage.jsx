@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import useHeroDepth from '../hooks/useHeroDepth';
 import { ArrowUpRight, Calendar, Search, Ticket, Sparkles } from 'lucide-react';
 
 const services = [
@@ -11,18 +12,21 @@ const services = [
 ];
 
 export default function HomePage({ navigate }) {
+  const composition = useRef(null);
+  useHeroDepth(composition);
+  const title = 'Campus Events & AI-Assisted Lost & Found';
   return <div className="nexus-home">
     <section className="nexus-home-hero" aria-labelledby="nexus-home-title">
       <div className="nexus-home-copy">
         <div className="nexus-eyebrow"><Sparkles size={15} />Serverless Cloud Architecture on AWS Free Tier</div>
-        <h1 id="nexus-home-title">Campus Events &amp; AI-Assisted Lost &amp; Found</h1>
+        <h1 id="nexus-home-title" aria-label={title}>{title.split(' ').map((word, index) => <React.Fragment key={index}><span className="nexus-word-mask" aria-hidden="true"><span className="nexus-title-word">{word}</span></span>{index < title.split(' ').length - 1 ? ' ' : null}</React.Fragment>)}</h1>
         <p className="nexus-home-intro">Atomic conditional seat bookings with DynamoDB &amp; automatic computer vision item matching using AWS Rekognition and DynamoDB Streams.</p>
       </div>
-      <div className="nexus-campus-composition">
+      <div ref={composition} className="nexus-campus-composition"><div className="nexus-campus-plane">
         <img className="nexus-campus-photo" src="/images/nexus-campus.png" alt="Illustrative campus scene with students walking through a courtyard" width="1122" height="1402" fetchpriority="high" />
         <div className="nexus-hero-pass" aria-hidden="true"><span className="nexus-hero-pass-mark"><Ticket size={24}/></span><div><small>Campus pass</small><strong>Your next campus moment.</strong></div><span className="nexus-hero-pass-tear" /></div>
         <div className="nexus-hero-item" aria-hidden="true"><Search size={18}/><span><small>Photo reports</small><strong>Lost &amp; Found</strong></span><Sparkles size={16}/></div>
-      </div>
+      </div></div>
     </section>
     <nav className="nexus-home-tabs" aria-label="Explore Nexus services">
       {services.map(({ page, title, access, icon: Icon, description }) =>
