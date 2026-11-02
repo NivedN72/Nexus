@@ -1,5 +1,5 @@
 const eventTime = event => {
-  const time = Date.parse(event.date);
+  const time = Date.parse(event?.date);
   return Number.isFinite(time) ? time : Infinity;
 };
 
@@ -8,8 +8,11 @@ export const isPastEvent = (event, now = Date.now()) => {
   return Number.isFinite(time) && time <= now;
 };
 
-export const sortEventsByDate = events => [...events].sort((a, b) => {
-  const first = eventTime(a);
-  const second = eventTime(b);
-  return first === second ? 0 : first < second ? -1 : 1;
+export const sortEventsByDate = (entries, getEvent = event => event) => [...entries].sort((a, b) => {
+  const first = eventTime(getEvent(a));
+  const second = eventTime(getEvent(b));
+  if (first === second) return 0;
+  if (!Number.isFinite(first)) return 1;
+  if (!Number.isFinite(second)) return -1;
+  return second - first;
 });
