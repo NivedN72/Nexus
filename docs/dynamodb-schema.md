@@ -43,7 +43,7 @@
 - **Partition Key (PK):** `itemId` (String)
 - **Sort Key (SK):** None
 - **Table settings:** Customize settings -> Capacity mode: **On-demand**
-- **DynamoDB Streams:** Enable with **New and old images** (crucial for Phase 10 `matchItems`)
+- **DynamoDB Streams:** Enable with **New and old images** (triggers `matchItems`)
 - **Global Secondary Index (GSI):**
   - **Index Name:** `type-status-index`
   - **Partition Key:** `type` (String: `lost` or `found`)
@@ -63,3 +63,12 @@
   - `userEmail`: String (for match notification)
   - `matchedWithItemId`: String (optional)
   - `createdAt`: String
+
+
+## Current validation and matching fields
+
+New item reports include `uploadStatus` (`none`, `pending`, `ready`, or `rejected`). The upload processor stores `processedETag` and `updatedAt` internally. These fields do not require a table key change. Gallery responses do not expose reporter emails, Cognito identifiers, or processing ETags.
+
+Both matched records are claimed together with a DynamoDB transaction, conditional on open status, unchanged type/tags, and no existing match link. Booking transactions also guard against the event date changing after it was checked. Expired event rejection is enforced by the booking handler.
+
+`CANCELLED` bookings and `closed` reports are possible schema values from earlier documentation; the current interface does not implement cancellation or a claim-closing workflow.

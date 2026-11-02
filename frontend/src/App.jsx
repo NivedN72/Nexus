@@ -10,7 +10,6 @@ import BookingPass from './components/BookingPass';
 import ItemCard from './components/ItemCard';
 import ReportItemModal from './components/ReportItemModal';
 import CreateEventModal from './components/CreateEventModal';
-import SettingsModal from './components/SettingsModal';
 import AuthModal from './components/AuthModal';
 import BookEventModal from './components/BookEventModal';
 import AwsArchitectureBadge from './components/AwsArchitectureBadge';
@@ -56,7 +55,6 @@ export default function App() {
   // Modals
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   const showToast = (message, type = 'success') => {
@@ -196,7 +194,6 @@ export default function App() {
         setActiveTab={setActiveTab}
         currentUser={currentUser}
         setCurrentUser={changeUser}
-        onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
       />
 
@@ -317,10 +314,6 @@ export default function App() {
         />
       )}
 
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-      />
     </div>
   );
 }

@@ -54,7 +54,6 @@ h1,h2,h3,h4 { text-wrap:balance; }
 .nexus-nav-account { display:flex; align-items:center; gap:10px; flex-shrink:0; }
 .nexus-sign-in { display:flex; align-items:center; gap:8px; background:var(--strong-surface); color:#fff; padding:11px 16px; border-radius:10px; font-size:12px; font-weight:600; }
 .nexus-sign-in:hover { background:var(--accent-foreground); }
-.nexus-nav-settings { display:grid; place-items:center; width:38px; height:38px; background:var(--surface); border:1px solid var(--line); border-radius:10px; color:var(--muted); }
 .nexus-account { display:flex; align-items:center; gap:12px; font-size:11px; }
 .nexus-account strong { display:block; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
 .nexus-account small { display:block; color:var(--muted); text-transform:capitalize; font-size:10px; margin-top:3px; }
@@ -307,7 +306,6 @@ h1,h2,h3,h4 { text-wrap:balance; }
   .nexus-account strong { max-width:60px; font-size:10px; }
   .nexus-account small { display:none; }
   .nexus-account { gap:6px; }
-  .nexus-nav-settings { width:32px; height:32px; }
   .nexus-mobile-nav { gap:4px; padding:8px 12px; }
   .nexus-mobile-nav button { flex-direction:column; gap:5px; font-size:9px; padding:8px 2px; }
   .nexus-eyebrow { font-size:9px; }
@@ -601,7 +599,7 @@ h1,h2,h3,h4 { text-wrap:balance; }
 .nexus-header--home .nexus-brand small,.nexus-header--home .nexus-account small { color:#e0e8df; }
 .nexus-header--home .nexus-nav-links button { color:#e0e8df; }
 .nexus-header--home .nexus-nav-links button:hover,.nexus-header--home .nexus-nav-links .is-active { color:#fff; }
-.nexus-header--home .nexus-nav-settings,.nexus-header--home .nexus-account button,.nexus-header--home .nexus-sign-in { background:#17322288; border:1px solid #c5cec477; color:#fff; }
+.nexus-header--home .nexus-account button,.nexus-header--home .nexus-sign-in { background:#17322288; border:1px solid #c5cec477; color:#fff; }
 .nexus-header--home button:focus-visible { outline-color:var(--lime); }
 .nexus-main--home .nexus-home-copy .nexus-eyebrow svg { color:var(--lime); }
 @media (max-width:767px) {

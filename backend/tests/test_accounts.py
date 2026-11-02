@@ -21,7 +21,7 @@ class Serializer:
     def serialize(self, value): return {"S": str(value)}
 class FakeAWS:
     def __init__(self):
-        self.events = {"event": {"eventId": "event", "title": "Open event", "totalSeats": 10, "seatsBooked": 0}}
+        self.events = {"event": {"eventId": "event", "title": "Open event", "date": "2099-01-01T00:00:00+00:00", "totalSeats": 10, "seatsBooked": 0}}
         self.bookings = {}
         self.lock = threading.Lock()
         self.added_groups = []
@@ -56,7 +56,7 @@ class FakeAWS:
             assert put['ConditionExpression'] == 'attribute_not_exists(bookingId)'
             item = {k:v['S'] for k,v in put['Item'].items()}
             ev = self.events.get(update['Key']['eventId']['S'])
-            if not ev or ev['seatsBooked'] >= ev['totalSeats'] or item['bookingId'] in self.bookings:
+            if not ev or ev['seatsBooked'] >= ev['totalSeats'] or item['bookingId'] in self.bookings or ev.get('date') != update['ExpressionAttributeValues'][':eventDate']['S']:
                 raise ClientError({'Error':{'Code':'TransactionCanceledException'}, 'CancellationReasons':[{'Code':'ConditionalCheckFailed'}]}, 'TransactWriteItems')
             self.bookings[item['bookingId']] = item
             ev['seatsBooked'] += 1
@@ -67,7 +67,7 @@ def load(name, aws):
     boto.resource = lambda *a, **k: aws
     boto.client = lambda *a, **k: aws
     conditions = types.ModuleType('boto3.dynamodb.conditions'); conditions.Key = Key
-    dtypes = types.ModuleType('boto3.dynamodb.types'); dtypes.TypeSerializer = Serializer
+    dtypes = types.ModuleType('boto3.dynamodb.types'); dtypes.TypeSerializer = Serializer; dtypes.TypeDeserializer = MagicMock
     errors = types.ModuleType('botocore.exceptions'); errors.ClientError = ClientError
     config = types.ModuleType('botocore.config'); config.Config = lambda **kwargs: kwargs
     for module in (boto, conditions, dtypes, errors, config): sys.modules[module.__name__] = module
@@ -98,7 +98,7 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(ticket['userId'],'visitor'); self.assertEqual(ticket['userEmail'],'visitor@example.com')
     def test_confirmation_email_follows_commit_and_uses_verified_recipient(self):
         handler = load('bookEvent', self.aws)
-        self.aws.events['event'].update(title='Cloud <Workshop>', date='2026-11-15T10:00:00Z', venue='Hall & Lab')
+        self.aws.events['event'].update(title='Cloud <Workshop>', date='2099-11-15T10:00:00Z', venue='Hall & Lab')
         mail = MagicMock()
         sent = []
         def capture(message):
@@ -118,7 +118,7 @@ class AccountTests(unittest.TestCase):
         message = sent[0]
         self.assertEqual(message['To'], 'visitor@example.com')
         text = message.get_body(preferencelist=('plain',)).get_content()
-        for value in ('Cloud <Workshop>', 'Hall & Lab', '15 Nov 2026, 10:00 UTC', body['booking']['bookingId']):
+        for value in ('Cloud <Workshop>', 'Hall & Lab', '15 Nov 2099, 10:00 UTC', body['booking']['bookingId']):
             self.assertIn(value, text)
         html = message.get_body(preferencelist=('html',)).get_content()
         self.assertIn('Cloud &lt;Workshop&gt;', html)
@@ -260,7 +260,7 @@ class AccountTests(unittest.TestCase):
             self.assertEqual(json.loads(result['body'])['items'][0]['imageUrl'], 'https://private.example/signed')
         self.assertEqual(len(signed), 3)
 
-    def test_legacy_bucket_urls_are_resigned_and_other_urls_are_unchanged(self):
+    def test_legacy_bucket_urls_are_resigned_and_untrusted_urls_are_removed(self):
         keys = []
         self.aws.generate_presigned_url = lambda *a, **k: keys.append(k['Params']['Key']) or 'https://private.example/signed'
         handler = load('getItems', self.aws)
@@ -271,7 +271,7 @@ class AccountTests(unittest.TestCase):
         ]
         response = json.loads(handler.items_response(original)['body'])
         self.assertEqual(keys, ['uploads/blue cap.jpg'])
-        self.assertEqual(response['items'][1:], original[1:])
+        self.assertEqual(response['items'][1:], [{}, {}])
 
     def test_student_request_never_auto_grants_students(self):
         handler=load('postConfirmation',self.aws)

@@ -42,21 +42,27 @@ def lambda_handler(event, context):
 
         # 2. Parse request body
         body = json.loads(event.get("body") or "{}")
-        title = body.get("title", "").strip()
-        description = body.get("description", "").strip()
-        date = body.get("date", "").strip()
-        venue = body.get("venue", "").strip()
-        total_seats = body.get("totalSeats")
-
-        if not title or not date or not venue or total_seats is None:
-            return response(400, {"error": "Missing required fields: title, date, venue, totalSeats"})
-
+        if not isinstance(body, dict):
+            return response(400, {"error": "Event must be a JSON object"})
+        fields = {}
+        for name, maximum in {"title": 160, "description": 4000, "date": 64, "venue": 200}.items():
+            value = body.get(name, "")
+            if not isinstance(value, str) or len(value) > maximum:
+                return response(400, {"error": f"Invalid or oversized field: {name}"})
+            fields[name] = value.strip()
+        title, description, venue = fields["title"], fields["description"], fields["venue"]
+        if not title or not venue:
+            return response(400, {"error": "Title and venue are required"})
         try:
-            total_seats = int(total_seats)
-            if total_seats <= 0:
+            start = datetime.datetime.fromisoformat(fields["date"].replace("Z", "+00:00"))
+            if start.tzinfo is None or start <= datetime.datetime.now(datetime.timezone.utc):
                 raise ValueError()
+            date = start.astimezone(datetime.timezone.utc).isoformat()
         except ValueError:
-            return response(400, {"error": "totalSeats must be a positive integer"})
+            return response(400, {"error": "Choose a valid future date with a timezone"})
+        total_seats = body.get("totalSeats")
+        if type(total_seats) is not int or not 1 <= total_seats <= 100000:
+            return response(400, {"error": "totalSeats must be an integer between 1 and 100000"})
 
         user_id = claims.get("sub", claims.get("username", "admin-user"))
         event_id = str(uuid.uuid4())
@@ -77,6 +83,8 @@ def lambda_handler(event, context):
         table.put_item(Item=item)
         return response(201, {"message": "Event created successfully", "event": item})
 
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return response(400, {"error": "Invalid event request"})
     except Exception as e:
-        print(f"Error creating event: {str(e)}")
-        return response(500, {"error": "Failed to create event", "details": str(e)})
+        print("createEvent failed:", type(e).__name__)
+        return response(500, {"error": "Failed to create event"})

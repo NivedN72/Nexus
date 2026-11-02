@@ -16,8 +16,10 @@ def items_response(items):
     # Sign response copies only: DynamoDB keeps the permanent object keys.
     result = []
     for item in items:
-        photo = dict(item)
-        key = photo.get("imageUrl")
+        fields = ("itemId", "type", "title", "description", "location", "date",
+                  "tags", "status", "matchedWithItemId", "createdAt", "uploadStatus")
+        photo = {name: item[name] for name in fields if name in item}
+        key = item.get("imageUrl") if item.get("uploadStatus") in (None, "ready") else None
         if isinstance(key, str) and key.startswith("https://"):
             parsed = urlparse(key)
             if parsed.hostname in (f"{BUCKET_NAME}.s3.{REGION}.amazonaws.com", f"{BUCKET_NAME}.s3.amazonaws.com"):
@@ -88,5 +90,5 @@ def lambda_handler(event, context):
         return items_response(items)
 
     except Exception as e:
-        print(f"Error fetching items: {str(e)}")
-        return response(500, {"error": "Failed to fetch items", "details": str(e)})
+        print("getItems failed:", type(e).__name__)
+        return response(500, {"error": "Failed to fetch items"})

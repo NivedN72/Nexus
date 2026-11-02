@@ -2,6 +2,7 @@ import ModalShell from './ModalShell';
 import React, { useState } from 'react';
 import { X, Upload, Backpack, Search, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { api } from '../services/api';
+import { validatePhoto } from '../utils/uploads';
 
 export default function ReportItemModal({ isOpen, onClose, currentUser, onItemReported }) {
   const [type, setType] = useState('lost');
@@ -11,29 +12,40 @@ export default function ReportItemModal({ isOpen, onClose, currentUser, onItemRe
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [checkingPhoto, setCheckingPhoto] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
-  const handleFileChange = (e) => {
-    const selected = e.target.files[0];
+  const handleFileChange = async (e) => {
+    const input = e.target;
+    const selected = input.files[0];
+    setFile(null);
+    setPreview(null);
     if (!selected) return;
-
-    if (selected.name.toLowerCase().endsWith('.heic')) {
-      setError('iPhone HEIC format is not supported by AWS Rekognition. Please use JPEG or PNG.');
-      return;
+    setCheckingPhoto(true);
+    try {
+      await validatePhoto(selected);
+      // The user may select a different file while its signature is being checked.
+      if (input.files[0] !== selected) return;
+      setFile(selected);
+      setError('');
+      const reader = new FileReader();
+      reader.onload = () => { if (input.files[0] === selected) setPreview(reader.result); };
+      reader.readAsDataURL(selected);
+    } catch (err) {
+      if (input.files[0] !== selected) return;
+      input.value = '';
+      setError(err.message);
+    } finally {
+      setCheckingPhoto(false);
     }
-
-    setFile(selected);
-    setError('');
-    const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result);
-    reader.readAsDataURL(selected);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (checkingPhoto || loading) return;
     if (!title.trim() || !location.trim()) {
       setError('Title and location are required');
       return;
@@ -49,14 +61,14 @@ export default function ReportItemModal({ isOpen, onClose, currentUser, onItemRe
         title: title.trim(),
         location: location.trim(),
         description: description.trim(),
-        fileType: file ? file.type || 'image/jpeg' : 'image/jpeg',
+        ...(file ? { fileType: file.type, fileSize: file.size } : {}),
       };
 
       const result = await api.reportItem(reportData, currentUser);
 
-      if (file && result.uploadUrl) {
+      if (file && (result.upload || result.uploadUrl)) {
         setStatusMessage('2/3: Uploading photo directly to S3 via pre-signed URL...');
-        await api.uploadPhotoToS3(result.uploadUrl, file);
+        await api.uploadPhotoToS3(result.upload || result.uploadUrl, file);
 
         setStatusMessage('3/3: S3 event triggered! AWS Rekognition is auto-tagging...');
       }
@@ -145,6 +157,7 @@ export default function ReportItemModal({ isOpen, onClose, currentUser, onItemRe
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full bg-soft border border-line rounded-xl px-3.5 py-2 text-sm text-ink placeholder-muted focus:outline-none focus:border-accent-ink/25"
+              maxLength={160}
               required
             />
           </div>
@@ -158,6 +171,7 @@ export default function ReportItemModal({ isOpen, onClose, currentUser, onItemRe
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="w-full bg-soft border border-line rounded-xl px-3.5 py-2 text-sm text-ink placeholder-muted focus:outline-none focus:border-accent-ink/25"
+              maxLength={200}
               required
             />
           </div>
@@ -167,6 +181,7 @@ export default function ReportItemModal({ isOpen, onClose, currentUser, onItemRe
             <label className="block text-xs font-semibold text-muted mb-1">Details & Description</label>
             <textarea
               rows="2"
+              maxLength={2000}
               placeholder="Any distinguishing marks, colors, contents..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -177,7 +192,7 @@ export default function ReportItemModal({ isOpen, onClose, currentUser, onItemRe
           {/* Photo Upload with Pre-signed URL explanation */}
           <div>
             <label className="block text-xs font-semibold text-muted mb-1">
-              Item Photo (JPG or PNG for AWS Rekognition)
+              Item Photo (JPEG or PNG, up to 5 MB)
             </label>
             
             <div className="relative border-2 border-dashed border-line hover:border-accent-ink/50 rounded-xl p-4 text-center cursor-pointer bg-soft transition-colors">
@@ -210,7 +225,7 @@ export default function ReportItemModal({ isOpen, onClose, currentUser, onItemRe
           <div className="pt-2">
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || checkingPhoto}
               className="w-full py-3 px-4 rounded-xl font-bold text-sm bg-accent    hover:bg-accent-hover hover:bg-accent-hover text-ink shadow-sm flex items-center justify-center gap-2 transition-colors active:scale-[0.98] disabled:opacity-50"
             >
               {loading ? (

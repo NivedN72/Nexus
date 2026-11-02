@@ -135,6 +135,15 @@ def lambda_handler(event, context):
         event_item = events_table.get_item(Key={"eventId": event_id}, ConsistentRead=True).get("Item")
         if not event_item:
             return response(404, {"error": "Event not found"})
+        try:
+            event_date = event_item.get("date")
+            start = datetime.datetime.fromisoformat(event_date.replace("Z", "+00:00"))
+            if start.tzinfo is None:
+                raise ValueError("Timezone required")
+        except (AttributeError, TypeError, ValueError):
+            return response(409, {"error": "This event has no valid booking date"})
+        if start <= datetime.datetime.now(datetime.timezone.utc):
+            return response(409, {"error": "This event has passed. Bookings are closed."})
         booking_id = str(uuid.uuid5(uuid.NAMESPACE_URL, json.dumps([event_id, user_id])))
         if bookings_table.get_item(Key={"bookingId": booking_id}, ConsistentRead=True).get("Item"):
             return response(409, {"error": "You already have a ticket for this event"})
@@ -146,13 +155,17 @@ def lambda_handler(event, context):
             "userEmail": email, "attendeeName": claims.get("name") or email,
             "bookingTime": datetime.datetime.now(datetime.timezone.utc).isoformat(), "status": "CONFIRMED"
         }
+        # Recheck after legacy lookups; a date edit invalidates the transaction.
+        if start <= datetime.datetime.now(datetime.timezone.utc):
+            return response(409, {"error": "This event has passed. Bookings are closed."})
         # The unique ticket and seat counter succeed or fail together.
         client.transact_write_items(TransactItems=[
             {"Update": {
                 "TableName": "Nexus-Events", "Key": {"eventId": {"S": event_id}},
                 "UpdateExpression": "SET seatsBooked = seatsBooked + :one",
-                "ConditionExpression": "attribute_exists(eventId) AND seatsBooked < totalSeats",
-                "ExpressionAttributeValues": {":one": {"N": "1"}}
+                "ConditionExpression": "attribute_exists(eventId) AND seatsBooked < totalSeats AND #date = :eventDate",
+                "ExpressionAttributeNames": {"#date": "date"},
+                "ExpressionAttributeValues": {":one": {"N": "1"}, ":eventDate": {"S": event_date}}
             }},
             {"Put": {
                 "TableName": "Nexus-Bookings",

@@ -86,17 +86,24 @@ export const api = {
     return data;
   },
 
-  // 3. Direct S3 Upload via Pre-signed URL
-  async uploadPhotoToS3(uploadUrl, file) {
-    const res = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': file.type || 'image/jpeg',
-      },
-      body: file,
-    });
-
-    if (!res.ok) throw new Error(`Direct S3 upload failed with status ${res.status}`);
+  // Signed POST policies enforce size and type; PUT supports the previous API during rollout.
+  async uploadPhotoToS3(upload, file) {
+    const isPost = typeof upload === 'object' && upload !== null;
+    const url = isPost ? upload.url : upload;
+    if (typeof url !== 'string' || !url.startsWith('https://')) throw new Error('Invalid photo upload URL');
+    let options;
+    if (isPost) {
+      if (!upload.fields || typeof upload.fields !== 'object') throw new Error('Invalid photo upload policy');
+      const body = new FormData();
+      for (const [name, value] of Object.entries(upload.fields)) body.append(name, value);
+      body.append('file', file);
+      // The browser supplies the multipart boundary. Do not set Content-Type manually.
+      options = { method: 'POST', body };
+    } else {
+      options = { method: 'PUT', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file };
+    }
+    const res = await fetch(url, options);
+    if (!res.ok) throw new Error(`Photo upload failed with status ${res.status}`);
     return true;
   }
 };

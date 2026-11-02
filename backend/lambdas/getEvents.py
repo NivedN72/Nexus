@@ -42,5 +42,5 @@ def lambda_handler(event, context):
         return response(200, {"events": items, "count": len(items)})
 
     except Exception as e:
-        print(f"Error fetching events: {str(e)}")
-        return response(500, {"error": "Failed to retrieve events", "details": str(e)})
+        print("getEvents failed:", type(e).__name__)
+        return response(500, {"error": "Failed to retrieve events"})

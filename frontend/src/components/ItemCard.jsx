@@ -17,14 +17,14 @@ export default function ItemCard({ item }) {
   return <article className={`nexus-item-report ${isMatched ? 'is-matched' : ''}`}>
     <div className="nexus-item-photo">
       {canShowImage ? <img src={imageUrl} alt={item.title} loading="lazy" onError={()=>setFailedImageUrl(imageUrl)}/> :
-        <div className="nexus-item-placeholder"><ImageIcon size={32} strokeWidth={1}/><span>{imageUrl ? 'Photo unavailable. Refresh to retry.' : 'No photo uploaded'}</span></div>}
+        <div className="nexus-item-placeholder"><ImageIcon size={32} strokeWidth={1}/><span>{imageUrl ? 'Photo unavailable. Refresh to retry.' : item.uploadStatus === 'pending' ? 'Photo is being checked' : item.uploadStatus === 'rejected' ? 'Photo rejected: use a JPEG or PNG up to 5 MB' : 'No photo uploaded'}</span></div>}
       <span className={`nexus-item-type ${item.type === 'lost' ? 'is-lost' : ''}`}>{item.type}</span>
     </div>
     <div className="nexus-item-body">
       <div className="nexus-item-location"><MapPin size={13} aria-hidden="true"/><span>{item.location}</span><span className="nexus-item-state">{isMatched ? <><CheckCircle2 size={12}/>Matched</> : 'Open'}</span></div>
       <h3>{item.title}</h3><p>{item.description || 'No description provided.'}</p>
       <div className="nexus-item-tags"><span><Sparkles size={13}/>AWS Rekognition Vision Tags</span>{tags.length ? <div>{tags.map((tag,i)=><span key={i}>{tag}</span>)}</div> : <p>Waiting for image upload to tag...</p>}</div>
-      <footer><span>By: {item.reportedBy || item.userEmail}</span>{isMatched && <Sparkles size={15} aria-label="AI matched"/>}</footer>
+      <footer><span>Student report</span>{isMatched && <Sparkles size={15} aria-label="AI matched"/>}</footer>
     </div>
   </article>;
 }

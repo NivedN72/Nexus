@@ -27,9 +27,3 @@ if (typeof window !== 'undefined') {
     localStorage.removeItem('nexus_api_url');
   }
 }
-
-export const setConfig = (newConfig) => {
-  if (newConfig.apiBaseUrl) localStorage.setItem('nexus_api_url', newConfig.apiBaseUrl);
-  if (newConfig.userPoolId) localStorage.setItem('nexus_pool_id', newConfig.userPoolId);
-  if (newConfig.clientId) localStorage.setItem('nexus_client_id', newConfig.clientId);
-};

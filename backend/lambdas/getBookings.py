@@ -56,5 +56,5 @@ def lambda_handler(event, context):
         return response(200, {"bookings": items, "count": len(items)})
 
     except Exception as e:
-        print(f"Error fetching user bookings: {str(e)}")
-        return response(500, {"error": "Failed to fetch bookings", "details": str(e)})
+        print("getBookings failed:", type(e).__name__)
+        return response(500, {"error": "Failed to fetch bookings"})
